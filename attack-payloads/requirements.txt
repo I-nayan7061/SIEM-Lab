@@ -1,0 +1,6 @@
+# Attack Payloads & Test Runner Requirements
+# Note: Attack scripts utilize standard library modules (subprocess, base64, argparse, logging, time)
+# Optional libraries for automated reporting and testing:
+flake8>=6.0.0
+pyyaml>=6.0
+pytest>=7.0.0
