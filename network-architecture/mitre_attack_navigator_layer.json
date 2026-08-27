@@ -1,0 +1,60 @@
+{
+  "name": "Automated Cyber Range & SIEM Detection Lab - Coverage Layer",
+  "versions": {
+    "attack": "14",
+    "navigator": "4.8.1",
+    "layer": "4.5"
+  },
+  "domain": "enterprise-attack",
+  "description": "MITRE ATT&CK coverage map for detection rules and adversary emulation scripts authored by Nayan Solanki.",
+  "gradient": {
+    "colors": [
+      "#ffffff",
+      "#ff6666"
+    ],
+    "minValue": 0,
+    "maxValue": 100
+  },
+  "techniques": [
+    {
+      "techniqueID": "T1110.003",
+      "tactic": "credential-access",
+      "score": 100,
+      "color": "#ff3333",
+      "comment": "Simulated by brute_force_simulator.py. Detected by rdp_brute_force.yaml (Event ID 4625).",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1059.001",
+      "tactic": "execution",
+      "score": 100,
+      "color": "#ff3333",
+      "comment": "Simulated by powershell_obfuscation.py. Detected by suspicious_powershell.yaml (Sysmon Event ID 1 & Event ID 4104).",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1003.001",
+      "tactic": "credential-access",
+      "score": 100,
+      "color": "#ff3333",
+      "comment": "Simulated by credential_dump_simulator.py. Detected by lsass_access_attempt.yaml (Sysmon Event ID 10).",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1547.001",
+      "tactic": "persistence",
+      "score": 100,
+      "color": "#ff3333",
+      "comment": "Simulated by persistence_simulator.py. Detected via Sysmon Event ID 12/13 Registry monitoring.",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1070.001",
+      "tactic": "defense-evasion",
+      "score": 100,
+      "color": "#ff3333",
+      "comment": "Simulated by log_clearing_simulator.py. Detected via Security Event ID 1102 / 104.",
+      "enabled": true
+    }
+  ]
+}

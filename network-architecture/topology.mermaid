@@ -1,0 +1,45 @@
+graph TD
+    subgraph Host["Host Machine / Hypervisor (VirtualBox / VMware)"]
+        subgraph Subnet["Host-Only Virtual Network: 192.168.56.0/24"]
+            
+            subgraph Attacker["Offensive Node (192.168.56.20)"]
+                Kali["Kali Linux / Ubuntu"]
+                PyScripts["Python Attack Simulators<br/>- brute_force_simulator.py<br/>- powershell_obfuscation.py<br/>- credential_dump_simulator.py"]
+                Kali --> PyScripts
+            end
+
+            subgraph Target["Defensive Endpoint (192.168.56.10)"]
+                Win["Windows Server 2022 / Windows 10"]
+                Sysmon["Microsoft Sysmon<br/>(Process, Network, LSASS events)"]
+                WinLog["Windows Security Channel<br/>(Event IDs: 4625, 4688, 4104)"]
+                Shipper["Winlogbeat / Elastic Agent"]
+                
+                Win --> Sysmon
+                Win --> WinLog
+                Sysmon --> Shipper
+                WinLog --> Shipper
+            end
+
+            subgraph SIEM["SIEM & Analytics Node (192.168.56.30)"]
+                ELK["Elasticsearch 8.x / Splunk Enterprise"]
+                Kibana["Kibana Dashboards / Splunk Search App"]
+                Rules["Sigma Detection Engine<br/>- MITRE T1110.003 Alert<br/>- MITRE T1059.001 Alert<br/>- MITRE T1003.001 Alert"]
+                
+                ELK --> Kibana
+                ELK --> Rules
+            end
+
+        end
+    end
+
+    PyScripts -->|"1. Targeted Attack Vectors (RDP/SMB/PowerShell)"| Win
+    Shipper -->|"2. TLS Encrypted Telemetry (Port 5044/9200)"| ELK
+    Rules -->|"3. Trigger High-Fidelity Alert"| Kibana
+
+    classDef attacker fill:#ffdddd,stroke:#cc0000,stroke-width:2px;
+    classDef target fill:#fff3cd,stroke:#e0a800,stroke-width:2px;
+    classDef siem fill:#d4edda,stroke:#28a745,stroke-width:2px;
+
+    class Attacker,Kali,PyScripts attacker;
+    class Target,Win,Sysmon,WinLog,Shipper target;
+    class SIEM,ELK,Kibana,Rules siem;
