@@ -1,0 +1,63 @@
+{
+  "campaign_timestamp": "2026-08-27T18:02:07.414060Z",
+  "total_techniques_executed": 5,
+  "results": [
+    {
+      "target": "192.168.56.10",
+      "attempts": 8,
+      "success": false,
+      "credential": null,
+      "duration_ms": 0.68
+    },
+    {
+      "payloads": [
+        {
+          "name": "System Discovery via Encoded Command",
+          "executed": false
+        },
+        {
+          "name": "Simulated In-Memory Web Cradle Download",
+          "executed": false
+        },
+        {
+          "name": "User Context & Privilege Query",
+          "executed": false
+        }
+      ],
+      "duration_ms": 4.29
+    },
+    {
+      "duration_ms": 122.25
+    },
+    {
+      "timestamp": "2026-08-27T18:02:07.413841Z",
+      "technique_id": "T1547.001",
+      "technique_name": "Boot or Logon Autostart Execution: Registry Run Keys",
+      "tactic": "Persistence",
+      "status": "DRY_RUN",
+      "host_os": "Windows",
+      "details": {
+        "reg_path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+        "reg_value": "C:\\Windows\\System32\\cmd.exe /c echo cyber_range_persistence",
+        "scheduled_task": "CyberRangeUpdateTask"
+      },
+      "duration_ms": 0.14
+    },
+    {
+      "timestamp": "2026-08-27T18:02:07.413990Z",
+      "technique_id": "T1070.001",
+      "technique_name": "Indicator Removal on Host: Clear Windows Event Logs",
+      "tactic": "Defense Evasion",
+      "status": "DRY_RUN",
+      "host_os": "Windows",
+      "details": {
+        "targeted_channels": [
+          "Application",
+          "Microsoft-Windows-PowerShell/Operational"
+        ],
+        "command_invoked": "wevtutil cl <channel_name>"
+      },
+      "duration_ms": 0.07
+    }
+  ]
+}
