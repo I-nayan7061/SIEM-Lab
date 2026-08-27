@@ -1,0 +1,207 @@
+<!--
+  ==============================================================================
+  ENTERPRISE SYSMON CONFIGURATION (MITRE ATT&CK ALIGNED)
+  Author: Nayan Solanki (Senior Detection Engineer Portfolio)
+  Schema Version: 4.90
+  Target Environment: Windows Server 2022 / Windows 10 & 11 Enterprise
+  Tuning Strategy: High Signal-to-Noise Ratio, Optimized for SIEM ECS Parsing
+  ==============================================================================
+-->
+<Sysmon schemaversion="4.90">
+  <HashAlgorithms>md5,sha256,imphash</HashAlgorithms>
+  <CheckRevocation/>
+  <DnsLookup>False</DnsLookup>
+  <ArchiveDirectory>SysmonBackup</ArchiveDirectory>
+
+  <EventFiltering>
+
+    <!-- =======================================================================
+         EVENT ID 1: PROCESS CREATION (MITRE T1059, T1003, T1047, T1082)
+         ======================================================================= -->
+    <RuleGroup name="ProcessCreationRules" groupRelation="or">
+      <ProcessCreate onmatch="include">
+        <!-- T1059.001: PowerShell Execution with Suspicious Arguments -->
+        <Rule name="T1059.001_PowerShell_Encoded" groupRelation="and">
+          <Image condition="image">powershell.exe</Image>
+          <CommandLine condition="contains any">-enc;-encodedcommand;-e;downloadstring;invoke-expression;iex;bypass;unrestricted</CommandLine>
+        </Rule>
+        <Rule name="T1059.001_Pwsh_Execution" groupRelation="or">
+          <Image condition="image">pwsh.exe</Image>
+        </Rule>
+
+        <!-- T1059.003: Windows Command Shell Spawned by Suspicious Parents -->
+        <Rule name="T1059.003_Cmd_Suspicious_Parent" groupRelation="and">
+          <Image condition="image">cmd.exe</Image>
+          <ParentImage condition="image any">w3wp.exe;sqlservr.exe;nginx.exe;httpd.exe;powershell.exe;wmiprvse.exe</ParentImage>
+        </Rule>
+
+        <!-- T1218: Signed Binary Proxy Execution (LOLBins) -->
+        <Rule name="T1218_LOLBins" groupRelation="or">
+          <Image condition="image">mshta.exe</Image>
+          <Image condition="image">rundll32.exe</Image>
+          <Image condition="image">regsvr32.exe</Image>
+          <Image condition="image">certutil.exe</Image>
+          <Image condition="image">bitsadmin.exe</Image>
+          <Image condition="image">wmic.exe</Image>
+          <Image condition="image">cscript.exe</Image>
+          <Image condition="image">wscript.exe</Image>
+        </Rule>
+
+        <!-- T1003: Credential Dumping Utilities -->
+        <Rule name="T1003_Credential_Dump_Tools" groupRelation="or">
+          <Image condition="image">procdump.exe</Image>
+          <Image condition="image">procdump64.exe</Image>
+          <Image condition="image">mimikatz.exe</Image>
+          <Image condition="image">nanodump.exe</Image>
+          <Image condition="image">rubeus.exe</Image>
+          <CommandLine condition="contains any">sekurlsa;minidump;lsass.dmp;samlib</CommandLine>
+        </Rule>
+
+        <!-- T1070.001: Log Tampering & Deletion -->
+        <Rule name="T1070.001_Event_Log_Clearing" groupRelation="and">
+          <Image condition="image">wevtutil.exe</Image>
+          <CommandLine condition="contains any">cl;clear-log</CommandLine>
+        </Rule>
+
+        <!-- T1053.005: Scheduled Task Creation -->
+        <Rule name="T1053.005_Scheduled_Task_Create" groupRelation="and">
+          <Image condition="image">schtasks.exe</Image>
+          <CommandLine condition="contains">/create</CommandLine>
+        </Rule>
+      </ProcessCreate>
+
+      <!-- Noise Filtering & Performance Optimization Exclusions -->
+      <ProcessCreate onmatch="exclude">
+        <Image condition="is">C:\Windows\System32\audiodg.exe</Image>
+        <Image condition="is">C:\Windows\System32\conhost.exe</Image>
+        <Image condition="is">C:\Program Files\SplunkUniversalForwarder\bin\splunk-winevtlog.exe</Image>
+        <Image condition="is">C:\Program Files\Elastic\Agent\elastic-agent.exe</Image>
+      </ProcessCreate>
+    </RuleGroup>
+
+    <!-- =======================================================================
+         EVENT ID 3: NETWORK CONNECTION (MITRE T1071, T1021, T1110)
+         ======================================================================= -->
+    <RuleGroup name="NetworkConnectionRules" groupRelation="or">
+      <NetworkConnect onmatch="include">
+        <!-- Suspicious C2 & Non-Standard Outbound Ports -->
+        <DestinationPort condition="is">4444</DestinationPort>
+        <DestinationPort condition="is">1337</DestinationPort>
+        <DestinationPort condition="is">8080</DestinationPort>
+        <DestinationPort condition="is">8443</DestinationPort>
+
+        <!-- Lateral Movement & Remote Administration -->
+        <DestinationPort condition="is">3389</DestinationPort> <!-- RDP -->
+        <DestinationPort condition="is">445</DestinationPort>  <!-- SMB -->
+        <DestinationPort condition="is">5985</DestinationPort> <!-- WinRM HTTP -->
+        <DestinationPort condition="is">5986</DestinationPort> <!-- WinRM HTTPS -->
+      </NetworkConnect>
+
+      <NetworkConnect onmatch="exclude">
+        <Image condition="is">C:\Program Files\Elastic\Agent\elastic-agent.exe</Image>
+        <DestinationIp condition="is">127.0.0.1</DestinationIp>
+      </NetworkConnect>
+    </RuleGroup>
+
+    <!-- =======================================================================
+         EVENT ID 7: IMAGE / DLL LOAD (MITRE T1574: Hijacking & T1003: Credential Access)
+         ======================================================================= -->
+    <RuleGroup name="ImageLoadRules" groupRelation="or">
+      <ImageLoad onmatch="include">
+        <ImageLoaded condition="image">samlib.dll</ImageLoaded>
+        <ImageLoaded condition="image">vaultcli.dll</ImageLoaded>
+        <ImageLoaded condition="image">wdigest.dll</ImageLoaded>
+        <ImageLoaded condition="image">dbghelp.dll</ImageLoaded>
+      </ImageLoad>
+    </RuleGroup>
+
+    <!-- =======================================================================
+         EVENT ID 8: CREATE REMOTE THREAD / INJECTION (MITRE T1055: Process Injection)
+         ======================================================================= -->
+    <RuleGroup name="CreateRemoteThreadRules" groupRelation="or">
+      <CreateRemoteThread onmatch="include">
+        <TargetImage condition="image">lsass.exe</TargetImage>
+        <TargetImage condition="image">svchost.exe</TargetImage>
+        <TargetImage condition="image">explorer.exe</TargetImage>
+      </CreateRemoteThread>
+      <CreateRemoteThread onmatch="exclude">
+        <SourceImage condition="is">C:\Windows\System32\csrss.exe</SourceImage>
+        <SourceImage condition="is">C:\Windows\System32\svchost.exe</SourceImage>
+      </CreateRemoteThread>
+    </RuleGroup>
+
+    <!-- =======================================================================
+         EVENT ID 10: PROCESS ACCESS (MITRE T1003.001: LSASS Memory Dumping)
+         ======================================================================= -->
+    <RuleGroup name="ProcessAccessRules" groupRelation="or">
+      <ProcessAccess onmatch="include">
+        <Rule name="T1003.001_LSASS_ProcessAccess" groupRelation="and">
+          <TargetImage condition="image">lsass.exe</TargetImage>
+          <!-- High risk access rights: PROCESS_VM_READ, PROCESS_QUERY_INFORMATION, ALL_ACCESS -->
+          <GrantedAccess condition="contains any">0x1010;0x1410;0x1438;0x143a;0x1F0FFF;0x1F1FFF;0x1F2FFF;0x1F3FFF</GrantedAccess>
+        </Rule>
+      </ProcessAccess>
+      <ProcessAccess onmatch="exclude">
+        <SourceImage condition="is">C:\Windows\System32\svchost.exe</SourceImage>
+        <SourceImage condition="is">C:\Windows\System32\csrss.exe</SourceImage>
+        <SourceImage condition="is">C:\Windows\System32\wininit.exe</SourceImage>
+        <SourceImage condition="is">C:\Program Files\Windows Defender\MsMpEng.exe</SourceImage>
+      </ProcessAccess>
+    </RuleGroup>
+
+    <!-- =======================================================================
+         EVENT ID 11: FILE CREATION (MITRE T1059: Scripts, T1105: Ingress Tool Transfer)
+         ======================================================================= -->
+    <RuleGroup name="FileCreateRules" groupRelation="or">
+      <FileCreate onmatch="include">
+        <TargetFilename condition="end with">.exe</TargetFilename>
+        <TargetFilename condition="end with">.ps1</TargetFilename>
+        <TargetFilename condition="end with">.vbs</TargetFilename>
+        <TargetFilename condition="end with">.bat</TargetFilename>
+        <TargetFilename condition="end with">.dmp</TargetFilename>
+        <TargetFilename condition="contains">\AppData\Local\Temp\</TargetFilename>
+        <TargetFilename condition="contains">\Windows\Temp\</TargetFilename>
+      </FileCreate>
+    </RuleGroup>
+
+    <!-- =======================================================================
+         EVENT ID 12 / 13 / 14: REGISTRY MODIFICATIONS (MITRE T1547.001, T1112)
+         ======================================================================= -->
+    <RuleGroup name="RegistryEventRules" groupRelation="or">
+      <RegistryEvent onmatch="include">
+        <!-- Persistence Run Keys -->
+        <TargetObject condition="contains">\CurrentVersion\Run</TargetObject>
+        <TargetObject condition="contains">\CurrentVersion\RunOnce</TargetObject>
+        <!-- Defense Evasion: Defender Disablement -->
+        <TargetObject condition="contains">\Windows Defender\Real-Time Protection</TargetObject>
+        <!-- UAC Bypass & Elevation -->
+        <TargetObject condition="contains">\Environment\UserInitMprLogonScript</TargetObject>
+      </RegistryEvent>
+    </RuleGroup>
+
+    <!-- =======================================================================
+         EVENT ID 22: DNS QUERY (MITRE T1071.004: DNS Tunneling & C2)
+         ======================================================================= -->
+    <RuleGroup name="DnsQueryRules" groupRelation="or">
+      <DnsQuery onmatch="include">
+        <QueryName condition="end with">.top</QueryName>
+        <QueryName condition="end with">.xyz</QueryName>
+        <QueryName condition="end with">.tk</QueryName>
+      </DnsQuery>
+      <DnsQuery onmatch="exclude">
+        <Image condition="is">C:\Program Files\Mozilla Firefox\firefox.exe</Image>
+        <Image condition="is">C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe</Image>
+      </DnsQuery>
+    </RuleGroup>
+
+    <!-- =======================================================================
+         EVENT ID 25: PROCESS TAMPERING / HOLLOWING (MITRE T1055.012)
+         ======================================================================= -->
+    <RuleGroup name="ProcessTamperingRules" groupRelation="or">
+      <ProcessTampering onmatch="include">
+        <Type condition="is">Process image changed</Type>
+      </ProcessTampering>
+    </RuleGroup>
+
+  </EventFiltering>
+</Sysmon>

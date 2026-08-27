@@ -1,0 +1,60 @@
+###################### Winlogbeat Configuration ############################
+# Author: Nayan Solanki
+# Target: Windows Endpoint Telemetry Shipper to Elastic SIEM
+
+winlogbeat.event_logs:
+  # 1. Windows Security Log (Logon events, account management, privilege use)
+  - name: Security
+    event_id: 4624, 4625, 4672, 4688, 4720, 4726, 4738, 7045
+    processors:
+      - drop_event.when.not:
+          or:
+            - equals.winlog.event_id: "4625" # Failed Logon (Brute Force / Spraying)
+            - equals.winlog.event_id: "4624" # Successful Logon
+            - equals.winlog.event_id: "4688" # Process Creation
+            - equals.winlog.event_id: "4672" # Special Privileges Assigned
+            - equals.winlog.event_id: "7045" # New Service Installed
+
+  # 2. Microsoft Sysmon Operational Log (Process, Network, LSASS access)
+  - name: Microsoft-Windows-Sysmon/Operational
+    processors:
+      - add_tags:
+          tags: ["sysmon", "endpoint_telemetry"]
+
+  # 3. PowerShell Operational Log (Script Block Logging - MITRE T1059.001)
+  - name: Microsoft-Windows-PowerShell/Operational
+    event_id: 4104, 4103
+    processors:
+      - add_tags:
+          tags: ["powershell_logging"]
+
+  # 4. Windows System Log (Service changes, system events)
+  - name: System
+    event_id: 7045, 7036
+
+# ================================= Processors =================================
+processors:
+  - add_host_metadata:
+      netinfo.enabled: true
+  - add_cloud_metadata: ~
+  - add_docker_metadata: ~
+
+# ================================= Outputs ====================================
+
+# -------------------------- Elasticsearch Output ------------------------------
+output.elasticsearch:
+  hosts: ["http://192.168.56.30:9200"]
+  # Optional: For basic authentication
+  # username: "elastic"
+  # password: "changeme"
+  index: "winlogbeat-%{[agent.version]}-%{+yyyy.MM.dd}"
+
+# -------------------------- Optional Logstash Output --------------------------
+# output.logstash:
+#   hosts: ["192.168.56.30:5044"]
+
+setup.template.name: "winlogbeat"
+setup.template.pattern: "winlogbeat-*"
+setup.dashboards.enabled: true
+setup.kibana:
+  host: "http://192.168.56.30:5601"

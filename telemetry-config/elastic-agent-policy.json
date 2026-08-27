@@ -1,0 +1,38 @@
+{
+  "id": "windows-cyber-range-policy",
+  "name": "Windows Cyber Range Endpoint Policy",
+  "description": "Standardized endpoint detection and response policy for Windows target VM",
+  "version": 1,
+  "inputs": [
+    {
+      "type": "logfile",
+      "name": "windows-security-events",
+      "streams": [
+        {
+          "id": "windows.security.events",
+          "data_stream": {
+            "dataset": "windows.security",
+            "type": "logs"
+          }
+        }
+      ]
+    },
+    {
+      "type": "logfile",
+      "name": "windows-sysmon-events",
+      "streams": [
+        {
+          "id": "windows.sysmon.events",
+          "data_stream": {
+            "dataset": "windows.sysmon_operational",
+            "type": "logs"
+          }
+        }
+      ]
+    }
+  ],
+  "monitoring": {
+    "enabled": true,
+    "use_output": "default"
+  }
+}
