@@ -1,0 +1,33 @@
+# ==============================================================================
+# ELASTICSEARCH KIBANA QUERY LANGUAGE (KQL) & ESQL RULES
+# Author: Nayan Solanki
+# Lab Project: Automated Cyber Range & SIEM Detection Lab
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. RDP / Network Password Spraying (MITRE T1110.003)
+# ------------------------------------------------------------------------------
+# KQL Filter for Kibana Discover & Alert Creation:
+winlog.channel: "Security" and winlog.event_id: 4625 and (winlog.event_data.LogonType: "3" or winlog.event_data.LogonType: "10")
+
+# Elastic Security Rule Threshold:
+# Metric: Count of winlog.event_id > 4
+# Group by: winlog.event_data.IpAddress
+# Time Window: 5 minutes
+
+
+# ------------------------------------------------------------------------------
+# 2. Obfuscated PowerShell Execution (MITRE T1059.001)
+# ------------------------------------------------------------------------------
+# KQL Filter:
+(process.name: "powershell.exe" or process.name: "pwsh.exe") and (process.command_line: *"-enc"* or process.command_line: *"-encodedcommand"* or process.command_line: *"downloadstring"* or process.command_line: *"invoke-expression"*)
+
+# Or ScriptBlock Logging (Event ID 4104):
+winlog.channel: "Microsoft-Windows-PowerShell/Operational" and winlog.event_id: 4104 and powershell.file.script_block_text: (*"downloadstring"* or *"IEX"* or *"System.Net.WebClient"*)
+
+
+# ------------------------------------------------------------------------------
+# 3. LSASS Process Access / Credential Dumping (MITRE T1003.001)
+# ------------------------------------------------------------------------------
+# KQL Filter:
+winlog.channel: "Microsoft-Windows-Sysmon/Operational" and winlog.event_id: 10 and winlog.event_data.TargetImage: *"\lsass.exe" and not (winlog.event_data.SourceImage: *"\svchost.exe" or winlog.event_data.SourceImage: *"\csrss.exe" or winlog.event_data.SourceImage: *"\MsMpEng.exe")

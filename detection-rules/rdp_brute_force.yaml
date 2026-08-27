@@ -1,0 +1,35 @@
+title: Potential RDP / Network Password Spraying or Brute Force Detected
+id: a8f73b64-1234-4bcd-88ef-123456789abc
+status: experimental
+description: Detects multiple failed Windows logon attempts (Event ID 4625) from a single source IP or targeting a specific user account within a short 5-minute time window.
+author: Nayan Solanki
+references:
+  - https://attack.mitre.org/techniques/T1110/003/
+  - https://docs.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4625
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4625
+    LogonType:
+      - 3   # Network logon (SMB / RPC)
+      - 10  # RemoteInteractive (RDP)
+  timeframe: 5m
+  condition: selection | count(EventID) by IpAddress > 4
+fields:
+  - TimeCreated
+  - TargetUserName
+  - TargetDomainName
+  - IpAddress
+  - IpPort
+  - Status
+  - SubStatus
+falsepositives:
+  - Automated administrative service accounts with expired credentials
+  - Users repeatedly mistyping domain credentials
+level: high
+tags:
+  - attack.credential_access
+  - attack.t1110.003
+  - attack.t1110.001

@@ -1,0 +1,31 @@
+title: Suspicious Obfuscated or Base64 Encoded PowerShell Execution (ScriptBlock)
+id: 59a85703-9114-411a-8289-4d32a9a4b3d7
+status: experimental
+description: Detects execution of PowerShell with suspicious command-line parameters (EncodedCommand, IEX, DownloadString) via ScriptBlock Logging.
+author: Nayan Solanki
+references:
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1027/
+logsource:
+  product: windows
+  service: powershell
+detection:
+  selection_scriptblock:
+    EventID: 4104
+    ScriptBlockText|contains:
+      - 'downloadstring'
+      - 'invoke-expression'
+      - 'System.Net.WebClient'
+  condition: selection_scriptblock
+fields:
+  - ComputerName
+  - User
+  - ScriptBlockText
+falsepositives:
+  - Legitimate enterprise deployment scripts (SCCM, Chocolatey, IT automation)
+level: high
+tags:
+  - attack.execution
+  - attack.t1059.001
+  - attack.defense_evasion
+  - attack.t1027

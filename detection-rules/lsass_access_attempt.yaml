@@ -1,0 +1,44 @@
+title: Suspicious LSASS Process Access & Potential Credential Dumping
+id: f5d2a981-5544-4bcd-aa33-112233445566
+status: experimental
+description: Detects suspicious process open handles or access rights requested against the Local Security Authority Subsystem Service (lsass.exe), typical of Mimikatz or ProcDump activity.
+author: Nayan Solanki
+references:
+  - https://attack.mitre.org/techniques/T1003/001/
+logsource:
+  product: windows
+  service: sysmon
+detection:
+  selection:
+    EventID: 10
+    TargetImage|endswith: '\lsass.exe'
+    GrantedAccess|contains:
+      - '0x1010'
+      - '0x1410'
+      - '0x1438'
+      - '0x143a'
+      - '0x1F0FFF'
+      - '0x1F1FFF'
+      - '0x1F2FFF'
+      - '0x1F3FFF'
+  filter_legit:
+    SourceImage|endswith:
+      - '\svchost.exe'
+      - '\csrss.exe'
+      - '\wininit.exe'
+      - '\MsMpEng.exe'
+  condition: selection and not filter_legit
+fields:
+  - UtcTime
+  - SourceImage
+  - SourceProcessId
+  - TargetImage
+  - GrantedAccess
+  - CallTrace
+falsepositives:
+  - Endpoint Protection / Antivirus scanners inspecting LSASS memory
+  - Google Chrome / Chromium sandbox credential provider queries
+level: critical
+tags:
+  - attack.credential_access
+  - attack.t1003.001

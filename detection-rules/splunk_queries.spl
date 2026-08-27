@@ -1,0 +1,39 @@
+/*******************************************************************************
+ * SPLUNK SEARCH PROCESSING LANGUAGE (SPL) DETECTION QUERIES
+ * Author: Nayan Solanki
+ * Lab Project: Automated Cyber Range & SIEM Detection Lab
+ *******************************************************************************/
+
+/* =============================================================================
+ * 1. RDP & SMB Password Spraying / Brute Force Detection
+ * MITRE ATT&CK: T1110.003
+ * Description: Flags source IPs triggering > 4 failed logons within 5 minutes.
+ * ============================================================================= */
+index=winlogbeat sourcetype="WinEventLog:Security" EventCode=4625 (Logon_Type=3 OR Logon_Type=10)
+| bin _time span=5m
+| stats count as failed_attempts, values(TargetUserName) as targeted_users, values(Workstation_Name) as workstations by _time, Source_Network_Address, Logon_Type
+| where failed_attempts > 4
+| eval Alert_Severity = if(failed_attempts > 10, "CRITICAL", "HIGH")
+| table _time, Source_Network_Address, targeted_users, failed_attempts, Logon_Type, Alert_Severity
+
+
+/* =============================================================================
+ * 2. Suspicious Obfuscated & Base64 Encoded PowerShell Execution
+ * MITRE ATT&CK: T1059.001 & T1027
+ * Description: Identifies execution of encoded scripts or web cradle downloads.
+ * ============================================================================= */
+index=winlogbeat (sourcetype="WinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1) OR (sourcetype="WinEventLog:Security" EventCode=4688)
+| search (CommandLine="*-enc*" OR CommandLine="*-encodedcommand*" OR CommandLine="*downloadstring*" OR CommandLine="*iex *")
+| stats count by _time, host, User, ParentImage, Image, CommandLine
+| sort - _time
+
+
+/* =============================================================================
+ * 3. LSASS Process Handle & Memory Access (Credential Dumping)
+ * MITRE ATT&CK: T1003.001
+ * Description: Catches unapproved processes requesting handle rights to lsass.exe.
+ * ============================================================================= */
+index=winlogbeat sourcetype="WinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=10 TargetImage="*\\lsass.exe"
+| search NOT (SourceImage="*\\svchost.exe" OR SourceImage="*\\csrss.exe" OR SourceImage="*\\MsMpEng.exe")
+| table _time, host, SourceImage, TargetImage, GrantedAccess, CallTrace
+| sort - _time
