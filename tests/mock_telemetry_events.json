@@ -1,0 +1,59 @@
+{
+  "events": [
+    {
+      "id": "test_evt_001_rdp_brute_force_tp",
+      "description": "True Positive: RDP Failed Logon Event",
+      "channel": "Security",
+      "event_id": 4625,
+      "event_data": {
+        "TargetUserName": "Administrator",
+        "TargetDomainName": "CORP-LAB",
+        "Status": "0xc000006d",
+        "SubStatus": "0xc000006a",
+        "LogonType": "10",
+        "IpAddress": "192.168.56.20",
+        "IpPort": "54231"
+      },
+      "expected_detections": ["rdp_brute_force"]
+    },
+    {
+      "id": "test_evt_002_powershell_encoded_tp",
+      "description": "True Positive: Base64 Encoded PowerShell Process Creation",
+      "channel": "Microsoft-Windows-Sysmon/Operational",
+      "event_id": 1,
+      "event_data": {
+        "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "CommandLine": "powershell.exe -NoProfile -NonInteractive -EncodedCommand V3JpdGUtSG9zdCAnVGVzdCc=",
+        "ParentImage": "C:\\Windows\\System32\\cmd.exe",
+        "User": "CORP-LAB\\Administrator"
+      },
+      "expected_detections": ["suspicious_powershell"]
+    },
+    {
+      "id": "test_evt_003_lsass_process_access_tp",
+      "description": "True Positive: Suspicious Process Handle Opened to LSASS",
+      "channel": "Microsoft-Windows-Sysmon/Operational",
+      "event_id": 10,
+      "event_data": {
+        "SourceImage": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\mimikatz.exe",
+        "TargetImage": "C:\\Windows\\System32\\lsass.exe",
+        "GrantedAccess": "0x1010",
+        "CallTrace": "C:\\Windows\\SYSTEM32\\ntdll.dll+9fb64|C:\\Windows\\System32\\KERNELBASE.dll+2c8fe"
+      },
+      "expected_detections": ["lsass_access_attempt"]
+    },
+    {
+      "id": "test_evt_004_benign_svchost_fp_filter",
+      "description": "True Negative: Benign svchost accessing lsass.exe (Should be suppressed)",
+      "channel": "Microsoft-Windows-Sysmon/Operational",
+      "event_id": 10,
+      "event_data": {
+        "SourceImage": "C:\\Windows\\System32\\svchost.exe",
+        "TargetImage": "C:\\Windows\\System32\\lsass.exe",
+        "GrantedAccess": "0x1010",
+        "CallTrace": "C:\\Windows\\SYSTEM32\\ntdll.dll+9fb64"
+      },
+      "expected_detections": []
+    }
+  ]
+}
