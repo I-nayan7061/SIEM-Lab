@@ -1,0 +1,25 @@
+title: Windows Startup Registry Run Keys Persistence
+id: a7e3b129-2345-4abc-99ef-123456789def
+status: experimental
+description: Detects modification or creation of registry values in the Windows Run keys, which are commonly used by adversaries for persistence.
+author: Nayan Solanki
+references:
+  - https://attack.mitre.org/techniques/T1547/001/
+logsource:
+  product: windows
+  category: registry_event
+detection:
+  selection:
+    EventID: 13
+    TargetObject|contains: '\Software\Microsoft\Windows\CurrentVersion\Run'
+  condition: selection
+fields:
+  - Image
+  - TargetObject
+  - Details
+falsepositives:
+  - Legitimate installers or updating software adding startup tasks
+level: medium
+tags:
+  - attack.persistence
+  - attack.t1547.001

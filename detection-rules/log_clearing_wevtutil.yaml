@@ -1,0 +1,28 @@
+title: Windows Event Log Cleared via Wevtutil
+id: d4e3b129-1122-3344-5566-778899aabbcc
+status: experimental
+description: Detects command line execution of wevtutil.exe to clear event logs, which is a common defense evasion technique.
+author: Nayan Solanki
+references:
+  - https://attack.mitre.org/techniques/T1070/001/
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    EventID: 1
+    Image|endswith: '\wevtutil.exe'
+    CommandLine|contains:
+      - ' cl '
+      - 'clear-log'
+  condition: selection
+fields:
+  - Image
+  - CommandLine
+  - User
+falsepositives:
+  - Automated administrative maintenance scripts clearing specific debug logs (rare in production)
+level: high
+tags:
+  - attack.defense_evasion
+  - attack.t1070.001

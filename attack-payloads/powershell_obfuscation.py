@@ -16,17 +16,32 @@ TEST_PAYLOADS = [
     {
         "name": "System Discovery via Encoded Command",
         "raw_ps": "Get-WmiObject -Class Win32_ComputerSystem; Get-NetIPAddress",
-        "description": "Enumerates host operating system details and network interfaces."
+        "description": "Enumerates host operating system details and network interfaces.",
+        "use_raw": False
     },
     {
         "name": "Simulated In-Memory Web Cradle Download",
         "raw_ps": "$wc = New-Object System.Net.WebClient; # Simulated IEX download cradle",
-        "description": "Simulates download cradle patterns commonly detected by SOCs."
+        "description": "Simulates download cradle patterns commonly detected by SOCs.",
+        "use_raw": False
     },
     {
         "name": "User Context & Privilege Query",
         "raw_ps": "whoami /priv; [System.Security.Principal.WindowsIdentity]::GetCurrent().Name",
-        "description": "Enumerates caller privilege tokens."
+        "description": "Enumerates caller privilege tokens.",
+        "use_raw": False
+    },
+    {
+        "name": "Backtick Obfuscated Process Query (Raw)",
+        "raw_ps": "powershell.exe -NoProfile -NonInteractive -Command \"G`e`t`-`P`r`o`c`e`s`s -N`a`m`e l`s`a`s`s\"",
+        "description": "Uses backtick escape characters to obfuscate the cmdlet name directly on the command line.",
+        "use_raw": True
+    },
+    {
+        "name": "Format-String Obfuscated Invoke Expression (Raw)",
+        "raw_ps": "powershell.exe -NoProfile -NonInteractive -Command \"& ( '{1}{0}' -f 'EX','I' ) ( '{1}{0}' -f 'host','write-' )\"",
+        "description": "Reconstructs strings dynamically using format operators and invokes them.",
+        "use_raw": True
     }
 ]
 
@@ -47,11 +62,16 @@ class PowerShellSimulator(BaseAdversaryTechnique):
         for idx, payload in enumerate(TEST_PAYLOADS, 1):
             name = payload["name"]
             raw = payload["raw_ps"]
-            b64 = self._encode_powershell(raw)
-            cmd = f"powershell.exe -NoProfile -NonInteractive -EncodedCommand {b64}"
+            use_raw = payload.get("use_raw", False)
+            
+            if use_raw:
+                cmd = raw
+            else:
+                b64 = self._encode_powershell(raw)
+                cmd = f"powershell.exe -NoProfile -NonInteractive -EncodedCommand {b64}"
 
             self.logger.info(f"[{idx}/{len(TEST_PAYLOADS)}] Vector: {name}")
-            self.logger.info(f"    Raw Command: {raw}")
+            self.logger.info(f"    Command: {cmd}")
             
             if dry_run:
                 self.logger.info("    [DRY RUN] Skipping actual execution.")

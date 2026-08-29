@@ -1,0 +1,31 @@
+title: LSASS Memory Dumping via Rundll32 and Comsvcs.dll
+id: e5d2a981-9988-7766-5544-33221100aaee
+status: experimental
+description: Detects memory dumping of the Local Security Authority Subsystem Service (LSASS) process using rundll32.exe invoking comsvcs.dll's MiniDump export.
+author: Nayan Solanki
+references:
+  - https://attack.mitre.org/techniques/T1003/001/
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    EventID: 1
+    Image|endswith: '\rundll32.exe'
+    CommandLine|contains:
+      - 'comsvcs.dll'
+  selection_export:
+    CommandLine|contains:
+      - 'MiniDump'
+      - '#24'
+  condition: selection and selection_export
+fields:
+  - Image
+  - CommandLine
+  - User
+falsepositives:
+  - None expected for production environments
+level: critical
+tags:
+  - attack.credential_access
+  - attack.t1003.001
