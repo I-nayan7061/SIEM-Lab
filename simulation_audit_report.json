@@ -1,71 +1,82 @@
 {
-  "campaign_timestamp": "2026-08-29T15:18:17.737913Z",
+  "campaign_timestamp": "2026-08-29T19:08:16.012477+00:00",
+  "target_ip": "192.168.56.10",
+  "dry_run": true,
   "total_techniques_executed": 5,
   "results": [
     {
-      "target": "192.168.56.10",
-      "attempts": 40,
-      "success": false,
-      "credentials": [],
-      "duration_ms": 4.72
+      "technique_id": "T1110.003",
+      "result": {
+        "target": "192.168.56.10",
+        "attempts": 40,
+        "success": false,
+        "credentials": []
+      }
     },
     {
-      "payloads": [
-        {
-          "name": "System Discovery via Encoded Command",
-          "executed": false
-        },
-        {
-          "name": "Simulated In-Memory Web Cradle Download",
-          "executed": false
-        },
-        {
-          "name": "User Context & Privilege Query",
-          "executed": false
-        },
-        {
-          "name": "Backtick Obfuscated Process Query (Raw)",
-          "executed": false
-        },
-        {
-          "name": "Format-String Obfuscated Invoke Expression (Raw)",
-          "executed": false
-        }
-      ],
-      "duration_ms": 2.43
+      "technique_id": "T1059.001",
+      "result": {
+        "payloads": [
+          {
+            "name": "System Discovery via Encoded Command",
+            "executed": false
+          },
+          {
+            "name": "Simulated In-Memory Web Cradle Download",
+            "executed": false
+          },
+          {
+            "name": "User Context & Privilege Query",
+            "executed": false
+          },
+          {
+            "name": "Backtick Obfuscated Process Query (Raw)",
+            "executed": false
+          },
+          {
+            "name": "Format-String Obfuscated Invoke Expression (Raw)",
+            "executed": false
+          }
+        ]
+      }
     },
     {
-      "duration_ms": 109.28
+      "technique_id": "T1003.001",
+      "result": {}
     },
     {
-      "timestamp": "2026-08-29T15:18:17.737673Z",
       "technique_id": "T1547.001",
-      "technique_name": "Boot or Logon Autostart Execution: Registry Run Keys",
-      "tactic": "Persistence",
-      "status": "DRY_RUN",
-      "host_os": "Windows",
-      "details": {
-        "reg_path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
-        "reg_value": "C:\\Windows\\System32\\cmd.exe /c echo cyber_range_persistence",
-        "scheduled_task": "CyberRangeUpdateTask"
-      },
-      "duration_ms": 0.15
+      "result": {
+        "timestamp": "2026-08-29T19:08:15.865575Z",
+        "technique_id": "T1547.001",
+        "technique_name": "Boot or Logon Autostart Execution: Registry Run Keys",
+        "tactic": "Persistence",
+        "status": "DRY_RUN",
+        "host_os": "Windows",
+        "details": {
+          "reg_path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+          "reg_value": "C:\\Windows\\System32\\cmd.exe /c echo cyber_range_persistence",
+          "scheduled_task": "CyberRangeUpdateTask"
+        }
+      }
     },
     {
-      "timestamp": "2026-08-29T15:18:17.737829Z",
       "technique_id": "T1070.001",
-      "technique_name": "Indicator Removal on Host: Clear Windows Event Logs",
-      "tactic": "Defense Evasion",
-      "status": "DRY_RUN",
-      "host_os": "Windows",
-      "details": {
-        "targeted_channels": [
-          "Application",
-          "Microsoft-Windows-PowerShell/Operational"
-        ],
-        "command_invoked": "wevtutil cl <channel_name>"
-      },
-      "duration_ms": 0.08
+      "result": {
+        "timestamp": "2026-08-29T19:08:16.012333Z",
+        "technique_id": "T1070.001",
+        "technique_name": "Indicator Removal on Host: Clear Windows Event Logs",
+        "tactic": "Defense Evasion",
+        "status": "DRY_RUN",
+        "host_os": "Windows",
+        "details": {
+          "targeted_channels": [
+            "Application",
+            "Microsoft-Windows-PowerShell/Operational"
+          ],
+          "command_invoked": "wevtutil cl <channel_name>"
+        }
+      }
     }
   ]
 }

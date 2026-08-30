@@ -38,12 +38,12 @@ class PersistenceSimulator(BaseAdversaryTechnique):
 
         if platform.system().lower() == "windows":
             # 1. Simulate Registry Run Key Creation (Sysmon Event ID 12/13)
-            cmd_reg = f'reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "{self.reg_key_name}" /t REG_SZ /d "{sim_details["reg_value"]}" /f'
-            subprocess.run(cmd_reg, shell=True, capture_output=True, text=True)
+            cmd_reg = ["reg", "add", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run", "/v", self.reg_key_name, "/t", "REG_SZ", "/d", sim_details["reg_value"], "/f"]
+            subprocess.run(cmd_reg, shell=False, capture_output=True, text=True)
 
             # 2. Simulate Scheduled Task Creation via schtasks (Event ID 4698 / Sysmon Event ID 1)
-            cmd_task = f'schtasks /create /tn "{self.task_name}" /tr "notepad.exe" /sc ONLOGON /f'
-            subprocess.run(cmd_task, shell=True, capture_output=True, text=True)
+            cmd_task = ["schtasks", "/create", "/tn", self.task_name, "/tr", "notepad.exe", "/sc", "ONLOGON", "/f"]
+            subprocess.run(cmd_task, shell=False, capture_output=True, text=True)
 
             sim_details["action"] = "Registry key and Scheduled Task injected successfully."
         else:
@@ -55,13 +55,13 @@ class PersistenceSimulator(BaseAdversaryTechnique):
         if platform.system().lower() == "windows":
             # Clean registry key
             subprocess.run(
-                f'reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "{self.reg_key_name}" /f',
-                shell=True, capture_output=True, text=True
+                ["reg", "delete", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run", "/v", self.reg_key_name, "/f"],
+                shell=False, capture_output=True, text=True
             )
             # Delete scheduled task
             subprocess.run(
-                f'schtasks /delete /tn "{self.task_name}" /f',
-                shell=True, capture_output=True, text=True
+                ["schtasks", "/delete", "/tn", self.task_name, "/f"],
+                shell=False, capture_output=True, text=True
             )
             self.logger.info("Cleaned up persistence simulation artifacts.")
         return True

@@ -69,6 +69,31 @@ def matches_selection(selection_dict, event):
     return True
 
 
+import ast
+
+
+def _eval_ast_bool_node(node):
+    """Safely evaluates an AST expression containing strictly boolean logic and constants."""
+    if isinstance(node, ast.Expression):
+        return _eval_ast_bool_node(node.body)
+    elif isinstance(node, ast.Constant):
+        return bool(node.value)
+    elif isinstance(node, ast.Name):
+        if node.id.lower() in ["true", "1"]:
+            return True
+        elif node.id.lower() in ["false", "0"]:
+            return False
+        raise ValueError(f"Disallowed identifier in condition: {node.id}")
+    elif isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+        return not _eval_ast_bool_node(node.operand)
+    elif isinstance(node, ast.BoolOp):
+        if isinstance(node.op, ast.And):
+            return all(_eval_ast_bool_node(val) for val in node.values)
+        elif isinstance(node.op, ast.Or):
+            return any(_eval_ast_bool_node(val) for val in node.values)
+    raise ValueError(f"Unsupported or unsafe AST node in condition: {type(node).__name__}")
+
+
 def evaluate_condition_str(condition_str, selections):
     if "|" in condition_str:
         condition_str = condition_str.split("|")[0].strip()
@@ -80,25 +105,23 @@ def evaluate_condition_str(condition_str, selections):
         if token_lower in ["and", "or", "not", "(", ")"]:
             new_tokens.append(token_lower)
         elif token in selections:
-            new_tokens.append(str(selections[token]))
+            new_tokens.append("True" if selections[token] else "False")
         else:
             # Clean up parenthesis
             clean_token = token.replace("(", "").replace(")", "")
             if clean_token in selections:
-                replaced = token.replace(clean_token, str(selections[clean_token]))
-                # Replace with lowercase booleans for python eval
-                replaced_py = replaced.replace(str(selections[clean_token]), str(selections[clean_token]).lower())
-                new_tokens.append(replaced_py)
+                val_str = "True" if selections[clean_token] else "False"
+                replaced = token.replace(clean_token, val_str)
+                new_tokens.append(replaced)
             else:
                 new_tokens.append(token)
                 
     expr = " ".join(new_tokens)
-    # Ensure lower case for true/false for python eval
-    expr = expr.replace("True", "True").replace("False", "False").replace("true", "True").replace("false", "False")
     try:
-        return bool(eval(expr, {"__builtins__": None}, {}))
+        tree = ast.parse(expr, mode='eval')
+        return _eval_ast_bool_node(tree)
     except Exception as e:
-        print(f"Error evaluating condition expression '{expr}' from '{condition_str}': {e}")
+        print(f"Error safely evaluating condition expression '{expr}' from '{condition_str}': {e}")
         return False
 
 

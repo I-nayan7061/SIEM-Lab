@@ -63,24 +63,35 @@ class BruteForceSimulator(BaseAdversaryTechnique):
             except Exception as e:
                 self.logger.error(f"Failed to load userlist: {e}")
 
+    def _validate_ip(self, ip_str: str) -> str:
+        try:
+            import ipaddress
+            ip_obj = ipaddress.ip_address(ip_str.strip())
+            return str(ip_obj)
+        except Exception:
+            self.logger.warning(f"Invalid target IP '{ip_str}', falling back to default 192.168.56.10")
+            return "192.168.56.10"
+
     def _simulate_windows_auth(self, target_ip: str, username: str, password: str) -> bool:
+        valid_ip = self._validate_ip(target_ip)
+        # Strip dangerous shell metacharacters from user/password
+        safe_user = "".join(c for c in username if c.isalnum() or c in "._-@$")
         os_type = platform.system().lower()
-        if os_type == "windows":
-            # 2>&1 redirects stderr to stdout for proper capture
-            cmd = f"net use \\\\{target_ip} /user:{username} {password} 2>&1"
-        else:
-            # -t 2 sets timeout to 2 seconds for smbclient
-            cmd = f"smbclient -L //{target_ip} -U '{username}%{password}' -t 2"
 
         try:
-            # Timeout set to 5s to prevent hanging on unresponsive hosts
-            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=5)
-            # Cleanup IPC connection if successful
-            if os_type == "windows" and result.returncode == 0:
-                subprocess.run(f"net use \\\\{target_ip} /delete /y", shell=True, capture_output=True)
-            return result.returncode == 0
+            if os_type == "windows":
+                # Use argument list without shell=True to prevent command injection
+                cmd = ["net", "use", f"\\\\{valid_ip}", f"/user:{safe_user}", str(password)]
+                result = subprocess.run(cmd, shell=False, capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    subprocess.run(["net", "use", f"\\\\{valid_ip}", "/delete", "/y"], shell=False, capture_output=True)
+                return result.returncode == 0
+            else:
+                cmd = ["smbclient", "-L", f"//{valid_ip}", "-U", f"{safe_user}%{password}", "-t", "2"]
+                result = subprocess.run(cmd, shell=False, capture_output=True, text=True, timeout=5)
+                return result.returncode == 0
         except subprocess.TimeoutExpired:
-            self.logger.warning(f"Connection timeout attempting auth to {target_ip}")
+            self.logger.warning(f"Connection timeout attempting auth to {valid_ip}")
             return False
         except Exception as e:
             self.logger.error(f"Execution error: {e}")
