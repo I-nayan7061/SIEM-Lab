@@ -56,7 +56,7 @@ The cyber range is deployed in an isolated **Host-Only Virtual Subnet (`192.168.
 | Technique ID | Technique Name | Tactic | Emulation Script | Telemetry Channel & Event ID | Detection Rule |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **`T1110.003`** | Password Spraying | Credential Access | [`brute_force_simulator.py`](attack-payloads/brute_force_simulator.py) | Security Channel `4625` (LogonType 3/10) | [`rdp_brute_force.yaml`](detection-rules/rdp_brute_force.yaml) |
-| **`T1059.001`** | PowerShell (Encoded) | Execution | [`powershell_obfuscation.py`](attack-payloads/powershell_obfuscation.py) | Sysmon `1` & PowerShell `4104` | [`suspicious_powershell.yaml`](detection-rules/suspicious_powershell.yaml) |
+| **`T1059.001`** | PowerShell (Encoded) | Execution | [`powershell_obfuscation.py`](attack-payloads/powershell_obfuscation.py) | Sysmon `1` & PowerShell `4104` | [`suspicious_powershell_process.yaml`](detection-rules/suspicious_powershell_process.yaml) & [`suspicious_powershell_scriptblock.yaml`](detection-rules/suspicious_powershell_scriptblock.yaml) |
 | **`T1003.001`** | LSASS Memory Dumping | Credential Access | [`credential_dump_simulator.py`](attack-payloads/credential_dump_simulator.py) | Sysmon `10` (`Target: lsass.exe`) | [`lsass_access_attempt.yaml`](detection-rules/lsass_access_attempt.yaml) |
 | **`T1547.001`** | Registry Run Keys | Persistence | [`persistence_simulator.py`](attack-payloads/persistence_simulator.py) | Sysmon `12` / `13` & Security `4698` | Sysmon Registry Monitor |
 | **`T1070.001`** | Clear Windows Event Logs | Defense Evasion | [`log_clearing_simulator.py`](attack-payloads/log_clearing_simulator.py) | Security `1102` / `104` | Event Log Clear Alert |
@@ -137,10 +137,11 @@ OK (Schema validity, True Positive logic, and False Positive filters verified)
 cd siem-server/
 docker compose up -d
 # Access Kibana SOC Dashboard: http://192.168.56.30:5601
+# Access Splunk Enterprise: http://192.168.56.30:8000 (admin:admin123)
 ```
 
 ### 2. Provision Windows Defensive Node (`192.168.56.10`)
-Run the automated PowerShell deployment script in an Administrator console:
+Run the automated PowerShell deployment script in an Administrator console (this will install Sysmon and Winlogbeat):
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force
 .\telemetry-config\deploy-telemetry.ps1 -SiemServer "192.168.56.30"
@@ -148,7 +149,8 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 
 ### 3. Launch Adversary Emulation Suite (`192.168.56.20`)
 ```bash
-python3 attack-payloads/run_simulation_suite.py --target 192.168.56.10
+# Run emulation and stream Ground-Truth execution logs to Elasticsearch for MTTD correlation
+python3 attack-payloads/run_simulation_suite.py --target 192.168.56.10 --siem-url http://192.168.56.30:9200
 ```
 
 ---
@@ -169,9 +171,10 @@ python3 attack-payloads/run_simulation_suite.py --target 192.168.56.10
 
 ## 📈 Demonstrated Senior Cybersecurity Competencies
 
-- **Detection-as-Code (DaC):** Unit testing and continuous validation of detection rules against synthetic telemetry.
-- **Enterprise Telemetry Engineering:** Authored high-signal, low-noise Sysmon 4.90 XML schemas and Windows Audit GPO policies.
-- **Threat Modeling & Risk Quantification:** STRIDE decomposition, MITRE D3FEND alignment, and MTTD/MTTR operational benchmarks.
+- **Object-Oriented Adversary Emulation:** Engineered a modular Python emulation framework with extensible base classes (`BaseAdversaryTechnique`) for scalable mapping to MITRE ATT&CK.
+- **Detection-as-Code (DaC):** Unit testing and continuous validation of Sigma detection rules against synthetic JSON telemetry within GitHub Actions CI/CD pipelines.
+- **Enterprise Telemetry Engineering:** Authored high-signal, low-noise Sysmon 4.90 XML schemas, Windows Audit GPO policies, and robust Winlogbeat log forwarding pipelines.
+- **Threat Modeling & Risk Quantification:** STRIDE decomposition, MITRE D3FEND alignment, and continuous MTTD/MTTR operational benchmarks via dynamic SIEM telemetry streaming.
 - **Full-Spectrum Incident Response:** Authored NIST SP 800-61r2 triage runbooks and Splunk risk-scoring correlation rules.
 
 ---
