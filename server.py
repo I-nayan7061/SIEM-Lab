@@ -10,20 +10,18 @@ Description: Unified FastAPI backend and web command center for adversary emulat
 
 import os
 import sys
-import glob
 import json
 import time
 import yaml
 import socket
 import platform
 import datetime
-import subprocess
 import threading
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -45,9 +43,9 @@ if str(BASE_DIR) not in sys.path:
 
 # Import emulation classes
 try:
-    from engine import AdversaryEmulationEngine, BaseAdversaryTechnique
+    from engine import AdversaryEmulationEngine
     from brute_force_simulator import BruteForceSimulator
-    from powershell_obfuscation import PowerShellSimulator, TEST_PAYLOADS
+    from powershell_obfuscation import PowerShellSimulator
     from credential_dump_simulator import CredentialDumpSimulator
     from persistence_simulator import PersistenceSimulator
     from log_clearing_simulator import LogClearingSimulator
@@ -283,7 +281,6 @@ class SimulationRequest(BaseModel):
 @app.post("/api/simulate")
 def run_simulation(req: SimulationRequest):
     """Executes adversary emulation campaign or single technique."""
-    global ACTIVE_SIMULATION
     
     if ACTIVE_SIMULATION["running"]:
         raise HTTPException(status_code=409, detail="A simulation is already actively executing.")
@@ -352,7 +349,7 @@ def run_simulation(req: SimulationRequest):
             with open(report_file, "w", encoding="utf-8") as rf:
                 json.dump(report_data, rf, indent=2)
                 
-            append_sim_log("SUCCESS", f"Full emulation campaign completed successfully! Audit report generated.", "all")
+            append_sim_log("SUCCESS", "Full emulation campaign completed successfully! Audit report generated.", "all")
 
         elif req.technique_id == "T1110.003":
             sim = BruteForceSimulator(delay=req.delay, jitter=req.jitter)
@@ -363,34 +360,34 @@ def run_simulation(req: SimulationRequest):
 
         elif req.technique_id == "T1059.001":
             sim = PowerShellSimulator()
-            append_sim_log("INFO", f"Triggering 5 Obfuscated PowerShell vectors", "T1059.001")
+            append_sim_log("INFO", "Triggering 5 Obfuscated PowerShell vectors", "T1059.001")
             res = sim.execute(target_ip=safe_target_ip, dry_run=req.dry_run)
             results.append({"technique_id": "T1059.001", "result": res})
-            append_sim_log("SUCCESS", f"T1059.001 execution vectors executed.", "T1059.001")
+            append_sim_log("SUCCESS", "T1059.001 execution vectors executed.", "T1059.001")
 
         elif req.technique_id == "T1003.001":
             sim = CredentialDumpSimulator()
-            append_sim_log("INFO", f"Triggering LSASS Process / Handle query simulation", "T1003.001")
+            append_sim_log("INFO", "Triggering LSASS Process / Handle query simulation", "T1003.001")
             res = sim.execute(target_ip=safe_target_ip, dry_run=req.dry_run)
             sim.cleanup()
             results.append({"technique_id": "T1003.001", "result": res})
-            append_sim_log("SUCCESS", f"T1003.001 LSASS simulation finished & artifacts cleaned.", "T1003.001")
+            append_sim_log("SUCCESS", "T1003.001 LSASS simulation finished & artifacts cleaned.", "T1003.001")
 
         elif req.technique_id == "T1547.001":
             sim = PersistenceSimulator()
-            append_sim_log("INFO", f"Triggering Registry Run Key / Task Persistence", "T1547.001")
+            append_sim_log("INFO", "Triggering Registry Run Key / Task Persistence", "T1547.001")
             res = sim.execute(target_ip=safe_target_ip, dry_run=req.dry_run)
             sim.cleanup()
             results.append({"technique_id": "T1547.001", "result": res})
-            append_sim_log("SUCCESS", f"T1547.001 persistence simulation tested & rolled back.", "T1547.001")
+            append_sim_log("SUCCESS", "T1547.001 persistence simulation tested & rolled back.", "T1547.001")
 
         elif req.technique_id == "T1070.001":
             sim = LogClearingSimulator()
-            append_sim_log("INFO", f"Triggering wevtutil Log Clearing simulation", "T1070.001")
+            append_sim_log("INFO", "Triggering wevtutil Log Clearing simulation", "T1070.001")
             res = sim.execute(target_ip=safe_target_ip, dry_run=req.dry_run)
             sim.cleanup()
             results.append({"technique_id": "T1070.001", "result": res})
-            append_sim_log("SUCCESS", f"T1070.001 indicator removal test completed.", "T1070.001")
+            append_sim_log("SUCCESS", "T1070.001 indicator removal test completed.", "T1070.001")
         else:
             raise HTTPException(status_code=400, detail=f"Unknown technique ID: {req.technique_id}")
 
