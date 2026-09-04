@@ -4,6 +4,7 @@ services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
     container_name: siem-elasticsearch
+    restart: unless-stopped
     environment:
       - node.name=siem-node1
       - cluster.name=cyber-range-siem
@@ -26,6 +27,7 @@ services:
   kibana:
     image: docker.elastic.co/kibana/kibana:8.11.1
     container_name: siem-kibana
+    restart: unless-stopped
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - SERVER_HOST=0.0.0.0
@@ -40,6 +42,7 @@ services:
   splunk:
     image: splunk/splunk:9.1.2
     container_name: siem-splunk
+    restart: unless-stopped
     environment:
       - SPLUNK_START_ARGS=--accept-license
       - SPLUNK_PASSWORD=admin123
