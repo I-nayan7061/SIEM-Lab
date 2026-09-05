@@ -50,7 +50,7 @@ class BaseAdversaryTechnique(abc.ABC):
 
     def log_execution(self, status: str, details: Dict[str, Any]) -> Dict[str, Any]:
         record = {
-            "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "technique_id": self.technique_id,
             "technique_name": self.technique_name,
             "tactic": self.tactic,
@@ -99,7 +99,7 @@ class AdversaryEmulationEngine:
 
     def _export_report(self) -> None:
         report = {
-            "campaign_timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+            "campaign_timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "total_techniques_executed": len(self.execution_history),
             "results": self.execution_history
         }

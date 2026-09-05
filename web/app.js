@@ -458,10 +458,43 @@ function renderTechniqueCards(techniques) {
   if (window.lucide) lucide.createIcons();
 }
 
+function setSimulationState(isRunning, activeTechnique = null) {
+  STATE.isSimulating = isRunning;
+  const fullBtn = document.getElementById("btn-full-sim");
+  if (fullBtn) {
+    fullBtn.disabled = isRunning;
+    if (isRunning) {
+      fullBtn.classList.add("opacity-60", "cursor-not-allowed");
+      fullBtn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>Emulating...</span>`;
+    } else {
+      fullBtn.classList.remove("opacity-60", "cursor-not-allowed");
+      fullBtn.innerHTML = `<i data-lucide="zap" class="w-3.5 h-3.5"></i><span>Launch Full Attack</span>`;
+    }
+  }
+
+  const execBtns = document.querySelectorAll("#techniques-cards-container button");
+  execBtns.forEach(btn => {
+    btn.disabled = isRunning;
+    if (isRunning) {
+      btn.classList.add("opacity-50", "cursor-not-allowed");
+    } else {
+      btn.classList.remove("opacity-50", "cursor-not-allowed");
+    }
+  });
+
+  if (window.lucide) lucide.createIcons();
+}
+
 async function triggerSimulation(techniqueId) {
+  if (STATE.isSimulating) {
+    appendLocalLog("[!] A simulation campaign is already in progress. Please wait for completion.", "WARN");
+    return;
+  }
+
   const dryRun = document.getElementById("sim-dryrun")?.checked ?? true;
   const targetIp = document.getElementById("sim-target-ip")?.value || "192.168.56.10";
 
+  setSimulationState(true, techniqueId);
   appendLocalLog(`[>] Initiating Emulation: ${techniqueId} (Target: ${targetIp}, DryRun: ${dryRun})...`, "INFO");
 
   try {
@@ -483,6 +516,8 @@ async function triggerSimulation(techniqueId) {
     }
   } catch (err) {
     appendLocalLog(`[!] Network error executing simulation: ${err}`, "ERROR");
+  } finally {
+    setSimulationState(false);
   }
 }
 
@@ -612,8 +647,20 @@ function renderDaCResults(data) {
   const duration = document.getElementById("dac-duration");
   if (duration) duration.innerText = `${data.duration_ms} ms`;
 
+  // Dynamically compute false positives across all rules
+  const totalFp = Object.values(data.rule_stats || {}).reduce((acc, r) => acc + (r.false_positives || 0), 0);
   const fpCount = document.getElementById("dac-fp-count");
-  if (fpCount) fpCount.innerText = `0 Verified`;
+  if (fpCount) {
+    fpCount.innerText = totalFp === 0 ? "0 Verified" : `${totalFp} Detected`;
+    fpCount.className = totalFp === 0 ? "text-lg font-bold text-emerald-400 mt-1" : "text-lg font-bold text-red-400 mt-1";
+  }
+
+  // Also dynamically update Overview badge
+  const overviewDac = document.getElementById("stat-dac-status");
+  if (overviewDac) {
+    overviewDac.innerText = `${data.pass_rate_pct}%`;
+    overviewDac.className = `text-2xl font-bold ${data.status === "PASSED" ? "text-emerald-400" : "text-red-400"}`;
+  }
 
   // Render evaluation table rows
   const tbody = document.getElementById("dac-test-tbody");
@@ -636,14 +683,20 @@ function renderDaCResults(data) {
   }
 }
 
-function renderRulesList(rules) {
+function renderRulesList(rules, activeIndex = 0) {
   const container = document.getElementById("rules-list-container");
   if (!container) return;
 
+  // Update dynamic count badge
+  const rulesBadge = document.getElementById("rules-badge");
+  if (rulesBadge) {
+    rulesBadge.innerText = `${rules.length} Rules`;
+  }
+
   container.innerHTML = rules.map((r, idx) => `
-    <button onclick="selectRule(${idx})" class="w-full text-left p-2.5 rounded-lg bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800/80 transition-all group">
+    <button onclick="selectRule(${idx})" class="rule-item-btn w-full text-left p-2.5 rounded-lg ${idx === activeIndex ? 'bg-cyan-950/50 border-cyan-500/50' : 'bg-slate-950/60 hover:bg-slate-800/80 border-slate-800/80'} border transition-all group" data-rule-index="${idx}">
       <div class="flex items-center justify-between gap-1 mb-1">
-        <span class="text-xs font-semibold text-slate-200 group-hover:text-cyan-400 truncate">${r.title || r.filename}</span>
+        <span class="text-xs font-semibold ${idx === activeIndex ? 'text-cyan-300' : 'text-slate-200'} group-hover:text-cyan-400 truncate">${r.title || r.filename}</span>
         <span class="px-1.5 py-0.2 rounded text-[9px] font-mono ${getSeverityBadge(r.level)}">${r.level || 'info'}</span>
       </div>
       <div class="text-[11px] font-mono text-slate-400 truncate">${r.filename}</div>
@@ -651,7 +704,7 @@ function renderRulesList(rules) {
   `).join("");
 
   if (rules.length > 0) {
-    selectRule(0);
+    selectRule(activeIndex >= 0 && activeIndex < rules.length ? activeIndex : 0);
   }
 }
 
@@ -668,6 +721,15 @@ function selectRule(index) {
   if (!rule) return;
   STATE.currentRule = rule;
 
+  // Update active styling on rule buttons
+  document.querySelectorAll(".rule-item-btn").forEach((btn, idx) => {
+    if (idx === index) {
+      btn.className = "rule-item-btn w-full text-left p-2.5 rounded-lg bg-cyan-950/50 border border-cyan-500/50 transition-all group";
+    } else {
+      btn.className = "rule-item-btn w-full text-left p-2.5 rounded-lg bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800/80 transition-all group";
+    }
+  });
+
   const titleEl = document.getElementById("current-rule-title");
   const metaEl = document.getElementById("current-rule-meta");
   if (titleEl) titleEl.innerText = rule.title || rule.filename;
@@ -678,7 +740,7 @@ function selectRule(index) {
     editor.value = rule.raw_yaml || "";
   }
 
-  // Populate SPL & KQL translations if available
+  // Populate SPL & KQL translations for this specific rule
   const splDisplay = document.getElementById("query-spl-display");
   const kqlDisplay = document.getElementById("query-kql-display");
 
@@ -690,14 +752,28 @@ function selectRule(index) {
   }
 }
 
+function extractQueryBlock(fullText, filename, delimiterRegex, prefix) {
+  if (!fullText) return null;
+  const baseName = filename.replace(/\.ya?ml$/, "");
+  const blocks = fullText.split(delimiterRegex);
+  for (const block of blocks) {
+    if (block.includes(`Rule: ${filename}`) || block.includes(`Rule: ${baseName}`)) {
+      return prefix + block.trim();
+    }
+  }
+  return null;
+}
+
 function getRelevantSpl(filename) {
   if (!STATE.queries.splunk_spl) return "Query translation standard in detection-rules/splunk_queries.spl";
-  return STATE.queries.splunk_spl;
+  const extracted = extractQueryBlock(STATE.queries.splunk_spl, filename, /\/\*\s*={5,}/, "/* ");
+  return extracted || STATE.queries.splunk_spl;
 }
 
 function getRelevantKql(filename) {
   if (!STATE.queries.elastic_kql) return "Query translation standard in detection-rules/elastic_queries.kql";
-  return STATE.queries.elastic_kql;
+  const extracted = extractQueryBlock(STATE.queries.elastic_kql, filename, /#\s*={5,}/, "# ");
+  return extracted || STATE.queries.elastic_kql;
 }
 
 async function saveCurrentRule() {
@@ -717,9 +793,24 @@ async function saveCurrentRule() {
 
     const data = await res.json();
     if (!res.ok) {
-      alert("Error saving rule: " + data.detail);
+      alert("Error saving rule: " + (data.detail || "Validation failure"));
     } else {
-      alert("Rule updated successfully! Re-running DaC test suite...");
+      // 1. Immediately update current rule in-memory
+      STATE.currentRule.raw_yaml = content;
+      if (data.parsed) {
+        Object.assign(STATE.currentRule, data.parsed);
+      }
+
+      // 2. Re-fetch all rules from backend to sync state
+      const rulesRes = await fetch("/api/rules");
+      const rulesData = await rulesRes.json();
+      if (rulesData && rulesData.rules) {
+        STATE.rules = rulesData.rules;
+        const currentIdx = STATE.rules.findIndex(r => r.filename === STATE.currentRule.filename);
+        renderRulesList(STATE.rules, currentIdx >= 0 ? currentIdx : 0);
+      }
+
+      appendLocalLog(`[✓] Rule '${STATE.currentRule.filename}' saved successfully! Re-running DaC test harness...`, "SUCCESS");
       await runDaCTests();
     }
   } catch (err) {

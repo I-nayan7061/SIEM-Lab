@@ -1,5 +1,5 @@
 {
-  "campaign_timestamp": "2026-08-29T19:08:16.012477+00:00",
+  "campaign_timestamp": "2026-09-05T17:41:25.788178+00:00",
   "target_ip": "192.168.56.10",
   "dry_run": true,
   "total_techniques_executed": 5,
@@ -47,7 +47,7 @@
     {
       "technique_id": "T1547.001",
       "result": {
-        "timestamp": "2026-08-29T19:08:15.865575Z",
+        "timestamp": "2026-09-05T17:41:25.712674+00:00",
         "technique_id": "T1547.001",
         "technique_name": "Boot or Logon Autostart Execution: Registry Run Keys",
         "tactic": "Persistence",
@@ -63,7 +63,7 @@
     {
       "technique_id": "T1070.001",
       "result": {
-        "timestamp": "2026-08-29T19:08:16.012333Z",
+        "timestamp": "2026-09-05T17:41:25.788003+00:00",
         "technique_id": "T1070.001",
         "technique_name": "Indicator Removal on Host: Clear Windows Event Logs",
         "tactic": "Defense Evasion",

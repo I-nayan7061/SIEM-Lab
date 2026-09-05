@@ -29,7 +29,7 @@
       "tactic": "execution",
       "score": 100,
       "color": "#ff3333",
-      "comment": "Simulated by powershell_obfuscation.py. Detected by suspicious_powershell.yaml (Sysmon Event ID 1 & Event ID 4104).",
+      "comment": "Simulated by powershell_obfuscation.py. Detected by suspicious_powershell_process.yaml & suspicious_powershell_scriptblock.yaml (Sysmon Event ID 1 & Event ID 4104).",
       "enabled": true
     },
     {

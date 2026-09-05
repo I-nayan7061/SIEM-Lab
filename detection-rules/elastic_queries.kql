@@ -1,33 +1,64 @@
 # ==============================================================================
-# ELASTICSEARCH KIBANA QUERY LANGUAGE (KQL) & ESQL RULES
-# Author: Nayan Solanki
-# Lab Project: Automated Cyber Range & SIEM Detection Lab
+# ELASTICSEARCH KIBANA QUERY LANGUAGE (KQL) & ECS DETECTION RULES
+# Author: Nayan Solanki (Senior Detection Engineering Portfolio)
+# Lab Project: Enterprise Cyber Range & Detection-as-Code (DaC) SIEM Platform
 # ==============================================================================
 
-# ------------------------------------------------------------------------------
-# 1. RDP / Network Password Spraying (MITRE T1110.003)
-# ------------------------------------------------------------------------------
-# KQL Filter for Kibana Discover & Alert Creation:
+# ==============================================================================
+# Rule: rdp_brute_force.yaml
+# MITRE ATT&CK: T1110.003 & T1110.001 (Credential Access: Password Spraying)
+# ==============================================================================
 winlog.channel: "Security" and winlog.event_id: 4625 and (winlog.event_data.LogonType: "3" or winlog.event_data.LogonType: "10")
-
-# Elastic Security Rule Threshold:
-# Metric: Count of winlog.event_id > 4
+# Elastic Security Alert Threshold:
+# Metric: count() > 4
 # Group by: winlog.event_data.IpAddress
-# Time Window: 5 minutes
+# Time Window: 5m
 
 
-# ------------------------------------------------------------------------------
-# 2. Obfuscated PowerShell Execution (MITRE T1059.001)
-# ------------------------------------------------------------------------------
-# KQL Filter:
-(process.name: "powershell.exe" or process.name: "pwsh.exe") and (process.command_line: *"-enc"* or process.command_line: *"-encodedcommand"* or process.command_line: *"downloadstring"* or process.command_line: *"invoke-expression"*)
-
-# Or ScriptBlock Logging (Event ID 4104):
-winlog.channel: "Microsoft-Windows-PowerShell/Operational" and winlog.event_id: 4104 and powershell.file.script_block_text: (*"downloadstring"* or *"IEX"* or *"System.Net.WebClient"*)
+# ==============================================================================
+# Rule: suspicious_powershell_process.yaml
+# MITRE ATT&CK: T1059.001 & T1027 (Execution & Defense Evasion: Obfuscated PowerShell)
+# ==============================================================================
+(process.name: "powershell.exe" or process.name: "pwsh.exe") and (process.command_line: *"-enc "* or process.command_line: *"-encodedcommand "* or process.command_line: *"-e "* or process.command_line: *"invoke-expression"* or process.command_line: *"iex "* or process.command_line: *"downloadstring"* or process.command_line: *"system.net.webclient"*)
 
 
-# ------------------------------------------------------------------------------
-# 3. LSASS Process Access / Credential Dumping (MITRE T1003.001)
-# ------------------------------------------------------------------------------
-# KQL Filter:
-winlog.channel: "Microsoft-Windows-Sysmon/Operational" and winlog.event_id: 10 and winlog.event_data.TargetImage: *"\lsass.exe" and not (winlog.event_data.SourceImage: *"\svchost.exe" or winlog.event_data.SourceImage: *"\csrss.exe" or winlog.event_data.SourceImage: *"\MsMpEng.exe")
+# ==============================================================================
+# Rule: suspicious_powershell_scriptblock.yaml
+# MITRE ATT&CK: T1059.001 & T1027 (Execution: PowerShell ScriptBlock Logging)
+# ==============================================================================
+winlog.channel: "Microsoft-Windows-PowerShell/Operational" and winlog.event_id: 4104 and powershell.file.script_block_text: (*"downloadstring"* or *"invoke-expression"* or *"System.Net.WebClient"*)
+
+
+# ==============================================================================
+# Rule: lsass_access_attempt.yaml
+# MITRE ATT&CK: T1003.001 (Credential Access: LSASS Memory Dumping)
+# ==============================================================================
+winlog.channel: "Microsoft-Windows-Sysmon/Operational" and winlog.event_id: 10 and winlog.event_data.TargetImage: *"\lsass.exe" and (winlog.event_data.GrantedAccess: (*"0x1010"* or *"0x1410"* or *"0x1438"* or *"0x143a"* or *"0x1F0FFF"* or *"0x1F1FFF"* or *"0x1F2FFF"* or *"0x1F3FFF"*)) and not (winlog.event_data.SourceImage: (*"\svchost.exe" or *"\csrss.exe" or *"\wininit.exe" or *"\MsMpEng.exe"))
+
+
+# ==============================================================================
+# Rule: lsass_dump_rundll32.yaml
+# MITRE ATT&CK: T1003.001 (Credential Access: LSASS Memory Dumping via Comsvcs.dll)
+# ==============================================================================
+process.name: "rundll32.exe" and process.command_line: *"comsvcs.dll"* and (process.command_line: *"MiniDump"* or process.command_line: *"#24"*)
+
+
+# ==============================================================================
+# Rule: persistence_registry_run_keys.yaml
+# MITRE ATT&CK: T1547.001 (Persistence: Boot or Logon Autostart - Registry Run Keys)
+# ==============================================================================
+winlog.channel: "Microsoft-Windows-Sysmon/Operational" and winlog.event_id: 13 and registry.path: *"\Software\Microsoft\Windows\CurrentVersion\Run"*
+
+
+# ==============================================================================
+# Rule: persistence_scheduled_tasks.yaml
+# MITRE ATT&CK: T1053.005 (Persistence: Scheduled Task Creation)
+# ==============================================================================
+(process.name: "schtasks.exe" and process.command_line: *"/create"*) or (winlog.channel: "Security" and winlog.event_id: 4698)
+
+
+# ==============================================================================
+# Rule: log_clearing_wevtutil.yaml
+# MITRE ATT&CK: T1070.001 (Defense Evasion: Clear Windows Event Logs)
+# ==============================================================================
+(process.name: "wevtutil.exe" and (process.command_line: *" cl "* or process.command_line: *"clear-log"*)) or (winlog.channel: "Security" and winlog.event_id: 1102) or (winlog.channel: "System" and winlog.event_id: 104)

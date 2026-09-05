@@ -17,6 +17,7 @@ import socket
 import platform
 import datetime
 import threading
+import logging
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
@@ -108,6 +109,29 @@ def append_sim_log(level: str, message: str, technique: Optional[str] = None):
         SIMULATION_LOGS.append(entry)
         if len(SIMULATION_LOGS) > 1000:
             SIMULATION_LOGS.pop(0)
+
+
+class WebTerminalLogHandler(logging.Handler):
+    """Bridges standard Python logging from adversary simulators directly to web streaming buffer."""
+    def emit(self, record):
+        try:
+            # Filter to only capture adversary techniques and engine logs
+            if not ("Technique::" in record.name or record.name == "AdversaryEngine"):
+                return
+            msg = record.getMessage()
+            technique = None
+            if "Technique::" in record.name:
+                technique = record.name.split("Technique::", 1)[1]
+            elif record.name == "AdversaryEngine":
+                technique = "all"
+            append_sim_log(record.levelname, msg, technique)
+        except Exception:
+            pass
+
+
+_web_log_handler = WebTerminalLogHandler()
+_web_log_handler.setLevel(logging.INFO)
+logging.getLogger().addHandler(_web_log_handler)
 
 # -----------------------------------------------------------------------------
 # API Endpoints
@@ -391,6 +415,8 @@ def run_simulation(req: SimulationRequest):
         else:
             raise HTTPException(status_code=400, detail=f"Unknown technique ID: {req.technique_id}")
 
+    except HTTPException:
+        raise
     except Exception as ex:
         append_sim_log("ERROR", f"Simulation execution failed: {str(ex)}", req.technique_id)
         raise HTTPException(status_code=500, detail=str(ex))
@@ -746,6 +772,11 @@ SERVER_START_TIME = time.time()
 
 if __name__ == "__main__":
     import uvicorn
-    port = 8000
-    print(f"[*] Launching Cyber Range SIEM Command Center at http://127.0.0.1:{port}")
-    uvicorn.run("server:app", host="0.0.0.0", port=port, log_level="info")
+    import argparse
+    parser = argparse.ArgumentParser(description="Cyber Range & Detection-as-Code Command Center")
+    parser.add_argument("--port", "-p", type=int, default=int(os.getenv("PORT", "8000")), help="Server port (Default: 8000 or $PORT)")
+    parser.add_argument("--host", default=os.getenv("HOST", "0.0.0.0"), help="Server host (Default: 0.0.0.0)")
+    args = parser.parse_args()
+
+    print(f"[*] Launching Cyber Range SIEM Command Center at http://127.0.0.1:{args.port}")
+    uvicorn.run("server:app", host=args.host, port=args.port, log_level="info")

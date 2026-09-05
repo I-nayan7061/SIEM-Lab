@@ -1,13 +1,14 @@
 /*******************************************************************************
  * SPLUNK SEARCH PROCESSING LANGUAGE (SPL) DETECTION QUERIES
- * Author: Nayan Solanki
- * Lab Project: Automated Cyber Range & SIEM Detection Lab
+ * Author: Nayan Solanki (Senior Detection Engineering Portfolio)
+ * Lab Project: Enterprise Cyber Range & Detection-as-Code (DaC) SIEM Platform
+ * All queries are validated against Windows Security & Sysmon telemetry.
  *******************************************************************************/
 
 /* =============================================================================
- * 1. RDP & SMB Password Spraying / Brute Force Detection
- * MITRE ATT&CK: T1110.003
- * Description: Flags source IPs triggering > 4 failed logons within 5 minutes.
+ * Rule: rdp_brute_force.yaml
+ * MITRE ATT&CK: T1110.003 & T1110.001 (Credential Access: Password Spraying)
+ * Channel: Windows Security Channel (Event ID 4625)
  * ============================================================================= */
 index=winlogbeat sourcetype="WinEventLog:Security" EventCode=4625 (Logon_Type=3 OR Logon_Type=10)
 | bin _time span=5m
@@ -15,25 +16,81 @@ index=winlogbeat sourcetype="WinEventLog:Security" EventCode=4625 (Logon_Type=3 
 | where failed_attempts > 4
 | eval Alert_Severity = if(failed_attempts > 10, "CRITICAL", "HIGH")
 | table _time, Source_Network_Address, targeted_users, failed_attempts, Logon_Type, Alert_Severity
+| sort - failed_attempts
 
 
 /* =============================================================================
- * 2. Suspicious Obfuscated & Base64 Encoded PowerShell Execution
- * MITRE ATT&CK: T1059.001 & T1027
- * Description: Identifies execution of encoded scripts or web cradle downloads.
+ * Rule: suspicious_powershell_process.yaml
+ * MITRE ATT&CK: T1059.001 & T1027 (Execution & Defense Evasion: Obfuscated PowerShell)
+ * Channel: Sysmon Event ID 1 & Windows Security Event ID 4688
  * ============================================================================= */
 index=winlogbeat (sourcetype="WinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1) OR (sourcetype="WinEventLog:Security" EventCode=4688)
-| search (CommandLine="*-enc*" OR CommandLine="*-encodedcommand*" OR CommandLine="*downloadstring*" OR CommandLine="*iex *")
+| search (Image="*\\powershell.exe" OR Image="*\\pwsh.exe") 
+  AND (CommandLine="*-enc *" OR CommandLine="*-encodedcommand *" OR CommandLine="*-e *" OR CommandLine="*invoke-expression*" OR CommandLine="*iex *" OR CommandLine="*downloadstring*" OR CommandLine="*system.net.webclient*")
 | stats count by _time, host, User, ParentImage, Image, CommandLine
 | sort - _time
 
 
 /* =============================================================================
- * 3. LSASS Process Handle & Memory Access (Credential Dumping)
- * MITRE ATT&CK: T1003.001
- * Description: Catches unapproved processes requesting handle rights to lsass.exe.
+ * Rule: suspicious_powershell_scriptblock.yaml
+ * MITRE ATT&CK: T1059.001 & T1027 (Execution: PowerShell ScriptBlock Logging)
+ * Channel: Microsoft-Windows-PowerShell/Operational (Event ID 4104)
+ * ============================================================================= */
+index=winlogbeat sourcetype="WinEventLog:Microsoft-Windows-PowerShell/Operational" EventCode=4104
+| search (ScriptBlockText="*downloadstring*" OR ScriptBlockText="*invoke-expression*" OR ScriptBlockText="*System.Net.WebClient*")
+| table _time, host, User, ScriptBlockId, ScriptBlockText
+| sort - _time
+
+
+/* =============================================================================
+ * Rule: lsass_access_attempt.yaml
+ * MITRE ATT&CK: T1003.001 (Credential Access: LSASS Memory Dumping)
+ * Channel: Sysmon Event ID 10 (ProcessAccess)
  * ============================================================================= */
 index=winlogbeat sourcetype="WinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=10 TargetImage="*\\lsass.exe"
-| search NOT (SourceImage="*\\svchost.exe" OR SourceImage="*\\csrss.exe" OR SourceImage="*\\MsMpEng.exe")
+| search (GrantedAccess="*0x1010*" OR GrantedAccess="*0x1410*" OR GrantedAccess="*0x1438*" OR GrantedAccess="*0x143a*" OR GrantedAccess="*0x1F0FFF*" OR GrantedAccess="*0x1F1FFF*" OR GrantedAccess="*0x1F2FFF*" OR GrantedAccess="*0x1F3FFF*")
+| search NOT (SourceImage="*\\svchost.exe" OR SourceImage="*\\csrss.exe" OR SourceImage="*\\wininit.exe" OR SourceImage="*\\MsMpEng.exe")
 | table _time, host, SourceImage, TargetImage, GrantedAccess, CallTrace
+| sort - _time
+
+
+/* =============================================================================
+ * Rule: lsass_dump_rundll32.yaml
+ * MITRE ATT&CK: T1003.001 (Credential Access: LSASS Memory Dumping via Comsvcs.dll)
+ * Channel: Sysmon Event ID 1 (Process Creation)
+ * ============================================================================= */
+index=winlogbeat sourcetype="WinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1 Image="*\\rundll32.exe"
+| search CommandLine="*comsvcs.dll*" (CommandLine="*MiniDump*" OR CommandLine="*#24*")
+| table _time, host, User, ParentImage, Image, CommandLine
+| sort - _time
+
+
+/* =============================================================================
+ * Rule: persistence_registry_run_keys.yaml
+ * MITRE ATT&CK: T1547.001 (Persistence: Boot or Logon Autostart - Registry Run Keys)
+ * Channel: Sysmon Event ID 13 (RegistryValueModified)
+ * ============================================================================= */
+index=winlogbeat sourcetype="WinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=13
+| search TargetObject="*\\Software\\Microsoft\\Windows\\CurrentVersion\\Run*"
+| table _time, host, Image, TargetObject, Details
+| sort - _time
+
+
+/* =============================================================================
+ * Rule: persistence_scheduled_tasks.yaml
+ * MITRE ATT&CK: T1053.005 (Persistence: Scheduled Task Creation)
+ * Channel: Sysmon Event ID 1 & Security Event ID 4698
+ * ============================================================================= */
+index=winlogbeat ((sourcetype="WinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1 Image="*\\schtasks.exe" CommandLine="*/create*") OR (sourcetype="WinEventLog:Security" EventCode=4698))
+| table _time, host, User, ParentImage, Image, CommandLine
+| sort - _time
+
+
+/* =============================================================================
+ * Rule: log_clearing_wevtutil.yaml
+ * MITRE ATT&CK: T1070.001 (Defense Evasion: Clear Windows Event Logs)
+ * Channel: Sysmon Event ID 1 & Security Event ID 1102 / System 104
+ * ============================================================================= */
+index=winlogbeat ((sourcetype="WinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1 Image="*\\wevtutil.exe" (CommandLine="* cl *" OR CommandLine="*clear-log*")) OR (sourcetype="WinEventLog:Security" EventCode=1102) OR (sourcetype="WinEventLog:System" EventCode=104))
+| table _time, host, User, Image, CommandLine
 | sort - _time
