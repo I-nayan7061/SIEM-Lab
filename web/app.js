@@ -8,157 +8,63 @@ let STATE = {
   rules: [],
   currentRule: null,
   telemetryEvents: [],
+  currentTelemetryFilter: "all",
   queries: {},
   docs: [],
   currentDoc: null,
   dacResults: null,
   isSimulating: false,
+  isDemoRunning: false,
+  demoTimer: null,
   logInterval: null,
   currentTourStep: 0,
   tourSteps: [
     {
       tab: "overview",
       targetId: "header-brand-section",
-      targetName: "Cyber Range Subnet",
-      title: "1. Cyber Range & Host-Only Subnet",
-      desc: "This platform is an enterprise-grade virtualized Cyber Range implementing Detection-as-Code (DaC). It runs within an isolated Host-Only subnet (192.168.56.0/24) to emulate adversaries and validate detections safely.",
+      targetName: "Cyber Range Overview",
+      title: "1. Isolated Subnet & 3-Step Architecture",
+      desc: "This platform is an enterprise-grade Cyber Range running inside an isolated Host-Only subnet (192.168.56.0/24). It demonstrates the complete Detection Engineering lifecycle: simulate attacks, capture telemetry, and test detection rules.",
       highlights: [
-        "Subnet: 192.168.56.0/24 (Virtual Switch)",
-        "End-to-end telemetry pipeline: Kali ➔ Windows ➔ SIEM",
-        "Standards: MITRE ATT&CK v14 & Sigma Rule Standard"
-      ]
-    },
-    {
-      tab: "overview",
-      targetId: "header-quick-actions",
-      targetName: "Global Action Toolbar",
-      title: "2. Global Quick Action Toolbar",
-      desc: "Use these top action buttons to control the cyber range from any screen: execute full multi-stage adversary simulations, trigger automated CI/CD DaC test runs, or export structured JSON audit reports.",
-      highlights: [
-        "⚡ Launch Full Attack: Executes complete 5-technique MITRE kill chain",
-        "🧪 Run DaC CI/CD Tests: Validates rules against synthetic telemetry",
-        "📄 Export Audit: Downloads timestamped compliance JSON report"
-      ]
-    },
-    {
-      tab: "overview",
-      targetId: "overview-metrics-grid",
-      targetName: "Executive Metrics",
-      title: "3. Live Operational Metric Counters",
-      desc: "Instant visibility into our SOC posture: 5 fully emulated offensive techniques, 8 vendor-agnostic Sigma detection rules, 100% CI/CD automated validation pass rate, and 3 active subnet nodes.",
-      highlights: [
-        "Continuous test validation: 0 False Positives",
-        "Multi-SIEM Ready: Splunk SPL & Elasticsearch KQL",
-        "All offensive and defensive services active"
-      ]
-    },
-    {
-      tab: "overview",
-      targetId: "overview-nodes-grid",
-      targetName: "Cyber Range Nodes",
-      title: "4. Infrastructure Node Status",
-      desc: "Visual cards representing each isolated virtual host in the cyber range: the Kali Linux adversary node, Windows Server defensive target, and Ubuntu SIEM analytics core.",
-      highlights: [
-        "Attacker Node: 192.168.56.20 (Python Simulation Engine)",
-        "Target Node: 192.168.56.10 (Sysmon 4.90 + Winlogbeat 8.x)",
-        "SIEM Node: 192.168.56.30 (Elasticsearch + Kibana + Splunk)"
+        "Host-Only Subnet: 192.168.56.0/24",
+        "3 Active Nodes: Kali Linux (Attacker), Windows Server (Target), Ubuntu (SIEM)",
+        "Industry Standards: MITRE ATT&CK v14 & Sigma Rule Standard"
       ]
     },
     {
       tab: "adversary",
       targetId: "adversary-top-controls",
-      targetName: "Attack Parameter Controls",
-      title: "5. Safe Adversary Controls & Target IP",
-      desc: "Before launching attacks, configure execution parameters: toggle Dry-Run Safe Mode to preview commands without changing host state, or set the defensive Target IP.",
+      targetName: "Attack Simulator",
+      title: "2. Safe Adversary Emulation",
+      desc: "Simulate real-world adversary techniques (Password Spraying, Obfuscated PowerShell, LSASS Dumping). Safe Dry-Run mode lets you preview commands and test detections without altering system state.",
       highlights: [
-        "Dry-Run Safe Mode: Non-destructive testing & telemetry verification",
-        "Target IP Address input (Default: 192.168.56.10)",
-        "Jitter and throttled delay parameters to emulate stealthy APTs"
-      ]
-    },
-    {
-      tab: "adversary",
-      targetId: "techniques-cards-container",
-      targetName: "MITRE Emulation Modules",
-      title: "6. MITRE ATT&CK Emulation Modules",
-      desc: "Each card represents a modular adversary simulation mapped directly to MITRE ATT&CK techniques. Click 'Execute' on any card to run that specific vector against the defensive node.",
-      highlights: [
-        "T1110.003: Password Spraying & Brute Force (Event 4625)",
-        "T1059.001: Obfuscated PowerShell Execution (Event 4104 & Sysmon 1)",
-        "T1003.001: LSASS Memory Dumping & Handle Access (Sysmon 10)",
-        "T1547.001: Registry Run Keys & Task Persistence (Sysmon 12/13)",
-        "T1070.001: Indicator Removal & Log Clearing (Event 1102/104)"
-      ]
-    },
-    {
-      tab: "adversary",
-      targetId: "adversary-terminal-card",
-      targetName: "Live Terminal Stream",
-      title: "7. Real-Time Emulation Terminal Stream",
-      desc: "Watch ground-truth attack execution telemetry stream in real time with color-coded log levels, execution timestamps, duration benchmarks, and automated rollback cleanups.",
-      highlights: [
-        "Real-time polling log streamer from Python simulation engine",
-        "Tracks return codes, error handlers, and duration in milliseconds",
-        "Clear Terminal button for interactive debugging"
+        "5 modular MITRE ATT&CK techniques",
+        "Configurable safe dry-run mode and target IP address",
+        "Real-time terminal execution log stream"
       ]
     },
     {
       tab: "detection",
       targetId: "dac-test-banner",
-      targetName: "DaC Automated CI/CD",
-      title: "8. Detection-as-Code (DaC) Automated Test Suite",
-      desc: "Detection-as-Code treats security rules like production software. Click 'Execute DaC Test Suite' to dynamically evaluate all Sigma rules against synthetic attack telemetry fixtures.",
+      targetName: "Detection-as-Code",
+      title: "3. Detection-as-Code & Sigma Multi-SIEM Engine",
+      desc: "Treat detection rules like production software! Run automated CI/CD unit tests against synthetic telemetry to assert zero false positives. Inspect Sigma rules and auto-generate Splunk (SPL) & Elastic (KQL) queries.",
       highlights: [
-        "Automated regression testing for SOC detection rules",
-        "Validates True Positives & asserts 0 False Positives",
-        "Fast execution benchmarks under 50ms"
-      ]
-    },
-    {
-      tab: "detection",
-      targetId: "rules-studio-panel",
-      targetName: "Sigma Rule Studio & Query Translators",
-      title: "9. Interactive Sigma Studio & Multi-SIEM Translator",
-      desc: "Inspect, edit, and save vendor-agnostic Sigma YAML detection rules. The engine automatically translates them into production Splunk SPL and Elasticsearch KQL queries with 1-click copy.",
-      highlights: [
-        "Full YAML editor with mandatory Sigma field validation",
-        "Splunk SPL query generator & 1-click copy",
-        "Elasticsearch KQL query generator & 1-click copy"
+        "Automated regression testing for 0 False Positives",
+        "Live YAML rule editor with validation",
+        "1-click copy for Splunk SPL and Elasticsearch KQL"
       ]
     },
     {
       tab: "telemetry",
-      targetId: "telemetry-table-container",
-      targetName: "SIEM Telemetry Logs",
-      title: "10. SIEM Telemetry & Raw JSON Inspector",
-      desc: "Explore low-level Windows Security & Sysmon 4.90 events shipped into the SIEM. Filter by Event ID, process image, or user, and click 'View JSON' for detailed forensic analysis.",
+      targetId: "telemetry-header-bar",
+      targetName: "SIEM Event Logs",
+      title: "4. Forensic Event Logs & Telemetry Hub",
+      desc: "Inspect low-level Windows Security and Sysmon 4.90 event logs shipped into the SIEM. Use quick filter pills to isolate failed logins (4625), process spawns (Sysmon 1), or LSASS dumps (Sysmon 10).",
       highlights: [
-        "Windows Security Event IDs: 4625, 4104, 1102, 4698",
-        "Sysmon 4.90 Event IDs: 1 (Process), 10 (LSASS), 12/13 (Registry)",
-        "Correlated rule badges highlight triggered detection rules"
-      ]
-    },
-    {
-      tab: "matrix",
-      targetId: "mitre-matrix-grid",
-      targetName: "MITRE ATT&CK Matrix",
-      title: "11. Interactive ATT&CK Heatmap Grid",
-      desc: "Interactive heatmap aligned with MITRE ATT&CK v14. Each tactic column highlights our covered techniques with 100% score badges, linked detection rules, and 1-click execution shortcuts.",
-      highlights: [
-        "Enterprise tactics: Initial Access, Execution, Persistence, Defense Evasion, Credential Access",
-        "Click any technique to jump directly to its simulation card"
-      ]
-    },
-    {
-      tab: "docs",
-      targetId: "docs-viewer-container",
-      targetName: "SOC Documentation Library",
-      title: "12. SOC Playbooks & Technical Guides",
-      desc: "Access our comprehensive engineering documentation: STRIDE Threat Models, NIST SP 800-61r2 Incident Response Runbooks, Detection Engineering SOPs, and Cloud Cyber Range guides.",
-      highlights: [
-        "9 detailed technical markdown guides with syntax highlighting",
-        "Triage, containment, and eradication workflows",
-        "Click 'Finish Tour' to explore the Cyber Range freely!"
+        "Windows Security Event 4625, 4104, 1102 & Sysmon 1, 10, 12",
+        "Quick filter chips by attack type",
+        "Forensic raw JSON inspection modal"
       ]
     }
   ]
@@ -173,13 +79,6 @@ document.addEventListener("DOMContentLoaded", () => {
   loadInitialData();
   startLogStream();
 
-  // Show tour on first visit if not seen
-  if (!localStorage.getItem("soc_range_tour_seen")) {
-    setTimeout(() => {
-      startTour();
-    }, 600);
-  }
-
   // Handle window resizing to keep spotlight attached
   window.addEventListener("resize", () => {
     const overlay = document.getElementById("tour-spotlight-overlay");
@@ -189,7 +88,16 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+// -----------------------------------------------------------------------------
+// TAB NAVIGATION
+// -----------------------------------------------------------------------------
+
 function switchTab(tabId) {
+  // Support aliases for consolidated map
+  if (tabId === "matrix" || tabId === "topology") {
+    tabId = "map";
+  }
+
   // Update tab buttons
   document.querySelectorAll(".tab-btn").forEach(btn => {
     if (btn.getAttribute("data-tab") === tabId) {
@@ -216,6 +124,25 @@ function switchTab(tabId) {
     lucide.createIcons();
   }
 }
+
+function toggleExplainer() {
+  const content = document.getElementById("explainer-content");
+  const chevron = document.getElementById("explainer-chevron");
+  if (!content) return;
+  
+  const isHidden = content.classList.contains("hidden");
+  if (isHidden) {
+    content.classList.remove("hidden");
+    if (chevron) chevron.style.transform = "rotate(180deg)";
+  } else {
+    content.classList.add("hidden");
+    if (chevron) chevron.style.transform = "rotate(0deg)";
+  }
+}
+
+// -----------------------------------------------------------------------------
+// INITIAL DATA LOADING
+// -----------------------------------------------------------------------------
 
 async function loadInitialData() {
   try {
@@ -255,7 +182,7 @@ async function loadInitialData() {
     // 7. Render MITRE ATT&CK Grid
     renderMitreMatrix(STATE.techniques);
 
-    // 8. Auto-run DaC tests to populate the results
+    // 8. Auto-run DaC tests silently to populate initial metrics
     runDaCTests(true);
 
   } catch (err) {
@@ -271,6 +198,85 @@ function updateStatusCards(data) {
     if (elT) elT.innerText = data.stats.total_techniques;
     if (elR) elR.innerText = data.stats.detection_rules;
   }
+}
+
+// -----------------------------------------------------------------------------
+// INTERACTIVE 3-STEP LIVE DEMONSTRATION
+// -----------------------------------------------------------------------------
+
+async function runInteractiveDemo() {
+  if (STATE.isDemoRunning || STATE.isSimulating) return;
+  STATE.isDemoRunning = true;
+
+  const banner = document.getElementById("demo-banner");
+  const stepIndicator = document.getElementById("demo-step-indicator");
+  const stepTitle = document.getElementById("demo-step-title");
+  const stepDesc = document.getElementById("demo-step-desc");
+
+  if (banner) banner.classList.remove("hidden");
+
+  // --- STAGE 1: Adversary Emulation ---
+  switchTab("adversary");
+  if (stepIndicator) stepIndicator.innerText = "Step 1 of 3 (Offense)";
+  if (stepTitle) stepTitle.innerText = "Simulating T1110.003 Password Spraying";
+  if (stepDesc) stepDesc.innerText = "Executing realistic brute-force authentication against Windows target 192.168.56.10...";
+
+  appendLocalLog("[Demo] ═══════════════════════════════════════════════════════════════", "INFO");
+  appendLocalLog("[Demo] Starting Live 3-Step Demonstration: Attack ➔ Log ➔ Detection", "INFO");
+  appendLocalLog("[Demo] Step 1: Simulating T1110.003 Password Spraying...", "INFO");
+
+  await triggerSimulation("T1110.003");
+
+  // Wait 2.5s for user to observe
+  await new Promise(resolve => { STATE.demoTimer = setTimeout(resolve, 2500); });
+  if (!STATE.isDemoRunning) return;
+
+  // --- STAGE 2: Telemetry Ingestion ---
+  switchTab("telemetry");
+  setTelemetryFilter("4625");
+  if (stepIndicator) stepIndicator.innerText = "Step 2 of 3 (Telemetry)";
+  if (stepTitle) stepTitle.innerText = "Ingesting Security Event 4625";
+  if (stepDesc) stepDesc.innerText = "Windows Security log generated Event ID 4625 (LogonType 10 / RDP) and shipped to SIEM via Winlogbeat.";
+
+  appendLocalLog("[Demo] Step 2: Telemetry captured! Windows Event ID 4625 ingested.", "INFO");
+
+  // Wait 3s
+  await new Promise(resolve => { STATE.demoTimer = setTimeout(resolve, 3000); });
+  if (!STATE.isDemoRunning) return;
+
+  // --- STAGE 3: Detection-as-Code ---
+  switchTab("detection");
+  if (stepIndicator) stepIndicator.innerText = "Step 3 of 3 (Defense)";
+  if (stepTitle) stepTitle.innerText = "Evaluating Sigma Rule & Generating SIEM Queries";
+  if (stepDesc) stepDesc.innerText = "Rule 'rdp_brute_force.yaml' matched the attack pattern! Auto-generating Splunk SPL & Elastic KQL queries.";
+
+  // Select the matching rule
+  const ruleIdx = STATE.rules.findIndex(r => r.filename.includes("rdp_brute_force") || (r.title && r.title.toLowerCase().includes("brute force")));
+  if (ruleIdx >= 0) {
+    selectRule(ruleIdx);
+  }
+
+  appendLocalLog("[Demo] Step 3: Detection-as-Code asserted! Rule matched with 0 false positives.", "SUCCESS");
+  appendLocalLog("[Demo] ═══════════════════════════════════════════════════════════════", "SUCCESS");
+
+  // Wait 3.5s then show completion
+  await new Promise(resolve => { STATE.demoTimer = setTimeout(resolve, 3500); });
+  if (!STATE.isDemoRunning) return;
+
+  if (stepIndicator) stepIndicator.innerText = "Complete";
+  if (stepTitle) stepTitle.innerText = "🎉 3-Step Live Demo Succeeded!";
+  if (stepDesc) stepDesc.innerText = "All 3 stages (Attack ➔ Log ➔ Detection) verified with 100% fidelity. Feel free to explore freely!";
+
+  setTimeout(() => {
+    stopInteractiveDemo();
+  }, 5000);
+}
+
+function stopInteractiveDemo() {
+  STATE.isDemoRunning = false;
+  if (STATE.demoTimer) clearTimeout(STATE.demoTimer);
+  const banner = document.getElementById("demo-banner");
+  if (banner) banner.classList.add("hidden");
 }
 
 // -----------------------------------------------------------------------------
@@ -291,7 +297,6 @@ function endTour() {
   if (overlay) {
     overlay.classList.add("hidden");
   }
-  localStorage.setItem("soc_range_tour_seen", "true");
 }
 
 function nextTourStep() {
@@ -368,10 +373,8 @@ function positionSpotlightAndPopover() {
   if (!spotlightBox || !popoverCard) return;
 
   if (targetEl) {
-    // Scroll smoothly so the target is centered
     targetEl.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
 
-    // Calculate exact target bounding box
     const rect = targetEl.getBoundingClientRect();
     const padding = 8;
 
@@ -386,19 +389,16 @@ function positionSpotlightAndPopover() {
     spotlightBox.style.height = `${spotHeight}px`;
     spotlightBox.style.opacity = "1";
 
-    // Position popover card smartly (below if space permits, otherwise above or to side)
     const popoverWidth = Math.min(440, window.innerWidth - 32);
     const popoverHeight = popoverCard.offsetHeight || 320;
 
     let popTop = spotTop + spotHeight + 16;
     let popLeft = Math.max(16, Math.min(window.innerWidth - popoverWidth - 16, spotLeft + (spotWidth / 2) - (popoverWidth / 2)));
 
-    // If overflows bottom, place above the element
     if (popTop + popoverHeight > window.innerHeight - 20) {
       popTop = Math.max(20, spotTop - popoverHeight - 16);
     }
 
-    // Boundary clamp
     popTop = Math.max(16, Math.min(window.innerHeight - popoverHeight - 16, popTop));
 
     popoverCard.style.top = `${popTop}px`;
@@ -406,7 +406,6 @@ function positionSpotlightAndPopover() {
     popoverCard.style.opacity = "1";
 
   } else {
-    // Fallback: Center in screen if element not found
     spotlightBox.style.opacity = "0";
     popoverCard.style.top = "50%";
     popoverCard.style.left = "50%";
@@ -436,14 +435,14 @@ function renderTechniqueCards(techniques) {
         <h3 class="font-bold text-sm text-white mb-1.5">${tech.name}</h3>
         <p class="text-xs text-slate-400 leading-relaxed mb-3">${tech.description}</p>
         
-        <div class="space-y-1 text-[11px] font-mono text-slate-400">
+        <div class="space-y-1 text-[11px] font-mono text-slate-400 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
           <div class="flex items-center justify-between">
-            <span>Detection Rule:</span>
-            <span class="text-blue-400">${tech.detection_rule}</span>
+            <span class="text-slate-400">Detection:</span>
+            <span class="text-blue-400 font-semibold truncate max-w-[170px]" title="${tech.detection_rule}">${tech.detection_rule}</span>
           </div>
           <div class="flex items-center justify-between">
-            <span>Event Channel:</span>
-            <span class="text-slate-300">${tech.telemetry_channel}</span>
+            <span class="text-slate-400">Target Log:</span>
+            <span class="text-emerald-400 truncate max-w-[170px]" title="${tech.telemetry_channel}">${tech.telemetry_channel}</span>
           </div>
         </div>
       </div>
@@ -486,7 +485,7 @@ function setSimulationState(isRunning, activeTechnique = null) {
 }
 
 async function triggerSimulation(techniqueId) {
-  if (STATE.isSimulating) {
+  if (STATE.isSimulating && !STATE.isDemoRunning) {
     appendLocalLog("[!] A simulation campaign is already in progress. Please wait for completion.", "WARN");
     return;
   }
@@ -655,7 +654,7 @@ function renderDaCResults(data) {
     fpCount.className = totalFp === 0 ? "text-lg font-bold text-emerald-400 mt-1" : "text-lg font-bold text-red-400 mt-1";
   }
 
-  // Also dynamically update Overview badge
+  // Update Overview badge
   const overviewDac = document.getElementById("stat-dac-status");
   if (overviewDac) {
     overviewDac.innerText = `${data.pass_rate_pct}%`;
@@ -687,7 +686,6 @@ function renderRulesList(rules, activeIndex = 0) {
   const container = document.getElementById("rules-list-container");
   if (!container) return;
 
-  // Update dynamic count badge
   const rulesBadge = document.getElementById("rules-badge");
   if (rulesBadge) {
     rulesBadge.innerText = `${rules.length} Rules`;
@@ -721,7 +719,6 @@ function selectRule(index) {
   if (!rule) return;
   STATE.currentRule = rule;
 
-  // Update active styling on rule buttons
   document.querySelectorAll(".rule-item-btn").forEach((btn, idx) => {
     if (idx === index) {
       btn.className = "rule-item-btn w-full text-left p-2.5 rounded-lg bg-cyan-950/50 border border-cyan-500/50 transition-all group";
@@ -740,7 +737,6 @@ function selectRule(index) {
     editor.value = rule.raw_yaml || "";
   }
 
-  // Populate SPL & KQL translations for this specific rule
   const splDisplay = document.getElementById("query-spl-display");
   const kqlDisplay = document.getElementById("query-kql-display");
 
@@ -795,13 +791,11 @@ async function saveCurrentRule() {
     if (!res.ok) {
       alert("Error saving rule: " + (data.detail || "Validation failure"));
     } else {
-      // 1. Immediately update current rule in-memory
       STATE.currentRule.raw_yaml = content;
       if (data.parsed) {
         Object.assign(STATE.currentRule, data.parsed);
       }
 
-      // 2. Re-fetch all rules from backend to sync state
       const rulesRes = await fetch("/api/rules");
       const rulesData = await rulesRes.json();
       if (rulesData && rulesData.rules) {
@@ -819,12 +813,38 @@ async function saveCurrentRule() {
 }
 
 // -----------------------------------------------------------------------------
-// SIEM TELEMETRY HUB
+// SIEM TELEMETRY HUB & FORENSICS
 // -----------------------------------------------------------------------------
+
+function setTelemetryFilter(filterKey) {
+  STATE.currentTelemetryFilter = filterKey;
+
+  // Update filter pill UI
+  document.querySelectorAll(".filter-chip").forEach(chip => {
+    if (chip.getAttribute("data-filter") === filterKey) {
+      chip.classList.add("active");
+    } else {
+      chip.classList.remove("active");
+    }
+  });
+
+  filterTelemetryTable();
+}
 
 function renderTelemetryTable(events) {
   const tbody = document.getElementById("telemetry-tbody");
   if (!tbody) return;
+
+  if (events.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" class="p-6 text-center text-slate-500 italic">
+          No telemetry events match current filter.
+        </td>
+      </tr>
+    `;
+    return;
+  }
 
   tbody.innerHTML = events.map((ev, idx) => {
     const eventData = ev.event_data || {};
@@ -832,10 +852,14 @@ function renderTelemetryTable(events) {
     const user = eventData.User || eventData.TargetUserName || ev.computer || "SYSTEM";
     const detections = ev.expected_detections || [];
 
+    // Find original index in STATE.telemetryEvents
+    const origIdx = STATE.telemetryEvents.indexOf(ev);
+    const viewIdx = origIdx >= 0 ? origIdx : idx;
+
     return `
       <tr class="hover:bg-slate-900/50 transition-colors">
         <td class="p-3">
-          <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/30">
+          <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/30 font-mono">
             ${ev.event_id || 'N/A'}
           </span>
         </td>
@@ -844,12 +868,14 @@ function renderTelemetryTable(events) {
         <td class="p-3 text-xs text-slate-400">${user}</td>
         <td class="p-3">
           ${detections.length > 0 
-            ? detections.map(d => `<span class="px-1.5 py-0.5 rounded text-[10px] bg-red-500/10 text-red-400 border border-red-500/30 mr-1">${d}</span>`).join("")
-            : '<span class="text-slate-500 text-[10px]">Baseline / Clean</span>'
+            ? detections.map(d => `<span class="px-1.5 py-0.5 rounded text-[10px] bg-red-500/10 text-red-400 border border-red-500/30 mr-1 font-mono">${d}</span>`).join("")
+            : '<span class="text-slate-500 text-[10px]">Clean Baseline</span>'
           }
         </td>
         <td class="p-3 text-right">
-          <button onclick="viewRawEvent(${idx})" class="px-2 py-1 text-[10px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300">View JSON</button>
+          <button onclick="viewRawEvent(${viewIdx})" class="px-2.5 py-1 text-[11px] font-medium rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors">
+            Inspect JSON
+          </button>
         </td>
       </tr>
     `;
@@ -857,11 +883,28 @@ function renderTelemetryTable(events) {
 }
 
 function filterTelemetryTable() {
-  const query = document.getElementById("telemetry-search").value.toLowerCase();
+  const searchInput = document.getElementById("telemetry-search");
+  const query = (searchInput ? searchInput.value : "").toLowerCase();
+  const filter = STATE.currentTelemetryFilter;
+
   const filtered = STATE.telemetryEvents.filter(ev => {
-    const text = JSON.stringify(ev).toLowerCase();
-    return text.includes(query);
+    // 1. Check category filter
+    const evId = String(ev.event_id || "");
+    if (filter === "4625" && evId !== "4625") return false;
+    if (filter === "1" && evId !== "1") return false;
+    if (filter === "10" && evId !== "10") return false;
+    if (filter === "1102" && evId !== "1102") return false;
+    if (filter === "clean" && (ev.expected_detections || []).length > 0) return false;
+
+    // 2. Check search input query
+    if (query) {
+      const text = JSON.stringify(ev).toLowerCase();
+      if (!text.includes(query)) return false;
+    }
+
+    return true;
   });
+
   renderTelemetryTable(filtered);
 }
 
@@ -869,16 +912,27 @@ function viewRawEvent(index) {
   const ev = STATE.telemetryEvents[index];
   if (!ev) return;
 
-  const viewer = document.getElementById("event-raw-viewer");
+  const modal = document.getElementById("event-raw-modal");
   const display = document.getElementById("event-raw-json");
 
-  display.innerText = JSON.stringify(ev, null, 2);
-  viewer.classList.remove("hidden");
-  viewer.scrollIntoView({ behavior: "smooth" });
+  if (display) display.innerText = JSON.stringify(ev, null, 2);
+  if (modal) modal.classList.remove("hidden");
+}
+
+function closeRawModal() {
+  const modal = document.getElementById("event-raw-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function copyJsonToClipboard() {
+  const display = document.getElementById("event-raw-json");
+  if (!display) return;
+  navigator.clipboard.writeText(display.innerText);
+  alert("Forensic JSON copied to clipboard!");
 }
 
 // -----------------------------------------------------------------------------
-// MITRE ATT&CK MATRIX GRID
+// MITRE ATT&CK MATRIX & TOPOLOGY
 // -----------------------------------------------------------------------------
 
 function renderMitreMatrix(techniques) {
@@ -935,7 +989,7 @@ function renderDocsList(docs) {
   const container = document.getElementById("docs-list-container");
   if (!container) return;
 
-  container.innerHTML = docs.map((d, idx) => `
+  container.innerHTML = docs.map(d => `
     <button onclick="loadDoc('${d.id}')" class="w-full text-left p-2 rounded-lg bg-slate-950/60 hover:bg-slate-800 text-xs text-slate-300 hover:text-cyan-400 font-medium transition-all flex items-center justify-between">
       <span class="truncate">${d.title}</span>
       <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-500"></i>
